@@ -1,0 +1,15 @@
+node_modules
+.pnpm-store
+.next
+.git
+.gitignore
+.env
+.env*.local
+prisma/*.db
+prisma/*.db-journal
+*.db
+*.db-journal
+README.md
+docs
+Dockerfile
+.dockerignore

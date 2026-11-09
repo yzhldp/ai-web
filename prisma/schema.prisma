@@ -1,0 +1,52 @@
+// 创意雏形合成助手 - 数据模型定义
+// 使用 SQLite 单文件数据库，无需额外服务
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// 用户表
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique // 账号（唯一，1-20位）
+  password  String // 密码哈希（bcryptjs 加密）
+  nickname  String? // 昵称（可选）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plans    ProjectPlan[]
+  comments Comment[]
+}
+
+/// 项目方案表
+model ProjectPlan {
+  id        String   @id @default(cuid())
+  userId    String // 关联用户
+  mode      String // 类型：tool / business
+  painPoint String // 痛点输入
+  demand    String // 需求输入
+  idea      String // 奇思妙想输入
+  content   String // AI 生成的完整方案内容
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments Comment[]
+}
+
+/// 评论表
+model Comment {
+  id        String   @id @default(cuid())
+  planId    String // 关联方案
+  userId    String // 评论用户
+  content   String // 评论内容
+  createdAt DateTime @default(now())
+
+  plan ProjectPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

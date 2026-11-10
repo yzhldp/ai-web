@@ -3,8 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  // 同时打包常见 Linux 运行环境的查询引擎，避免云端部署时引擎版本不匹配
-  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {

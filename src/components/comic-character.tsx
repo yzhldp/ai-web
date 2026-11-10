@@ -6,77 +6,121 @@ import { Lightbulb, Wrench, Rocket } from "lucide-react";
 /**
  * 漫画小人动态动画（登录页左侧）
  *
- * 动画循环流程（单轮 LOOP 秒，无限循环）：
- * 1. 小人头顶依次冒出三个气泡：「需求」「痛点」「奇思妙想」
- * 2. 三个气泡向中间聚合、合并成一个「项目雏形」大气泡（位于小人正头顶上方）
- * 3. 小人头顶同步点亮灯泡图标并产生发光动效
- * 4. 一轮结束后重置，循环播放
- *
- * 背景为左右分半的舞台画面：左侧「工具创新」、右侧「创业创新」，
- * 漫画小人站在画面中间分割线上。
- *
- * 采用 Framer Motion keyframes 数组 + times 实现单一循环，
- * 全程声明式、无副作用，避免内存泄漏。
+ * 布局：整体为左右分半的大背景（左「工具创新」蓝、右「创业创新」紫），
+ * 占满整个组件；漫画小人站在中间分割线上；头顶依次冒出三个云朵状气泡
+ * 「需求」「痛点」「奇思妙想」，随后向中间聚合，合并成一个「项目雏形」
+ * 云朵大气泡，同时小人头顶点亮灯泡并产生发光动效。7 秒循环。
  */
 const LOOP = 7; // 单轮动画总时长（秒）
 
-// 三个碎片气泡的起始位置、颜色、聚合位移，以及各自的「依次出现」时间相位
+// 云朵气泡：颜色 + 起始位置 + 聚合位移 + 依次出现的时间相位
 const BUBBLES = [
   {
     label: "需求",
-    color: "bg-sky-100 text-sky-600 border-sky-300",
+    fill: "#bfdbfe",
+    text: "#1e40af",
     start: "left-0 top-0",
-    moveX: 88,
-    moveY: 42,
+    moveX: 146,
+    moveY: 30,
     appearStart: 0.02,
     appearEnd: 0.12,
   },
   {
     label: "痛点",
-    color: "bg-rose-100 text-rose-600 border-rose-300",
-    start: "left-[110px] -top-3",
+    fill: "#fbcfe8",
+    text: "#9d174d",
+    start: "left-[146px] -top-4",
     moveX: 0,
-    moveY: 56,
+    moveY: 46,
     appearStart: 0.18,
     appearEnd: 0.28,
   },
   {
     label: "奇思妙想",
-    color: "bg-amber-100 text-amber-600 border-amber-300",
-    start: "left-[224px] top-0",
-    moveX: -88,
-    moveY: 42,
+    fill: "#fde68a",
+    text: "#92400e",
+    start: "left-[292px] top-0",
+    moveX: -146,
+    moveY: 30,
     appearStart: 0.34,
     appearEnd: 0.44,
   },
 ];
 
+/** 云朵形状气泡（三个碎片用） */
+function CloudBubble({
+  label,
+  fill,
+  text,
+}: {
+  label: string;
+  fill: string;
+  text: string;
+}) {
+  return (
+    <div className="relative">
+      <svg width="108" height="64" viewBox="0 0 108 64" fill="none">
+        <ellipse cx="36" cy="26" rx="22" ry="17" fill={fill} />
+        <ellipse cx="66" cy="22" rx="26" ry="19" fill={fill} />
+        <rect x="16" y="34" width="76" height="24" rx="12" fill={fill} />
+      </svg>
+      <span
+        className="absolute inset-0 flex items-center justify-center pb-2 text-sm font-bold"
+        style={{ color: text }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** 合并后的「项目雏形」云朵大气泡 */
+function IdeaCloud() {
+  return (
+    <div className="relative">
+      <svg width="130" height="78" viewBox="0 0 130 78" fill="none">
+        <defs>
+          <linearGradient id="idea-cloud" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#c084fc" />
+          </linearGradient>
+        </defs>
+        <ellipse cx="43" cy="32" rx="27" ry="21" fill="url(#idea-cloud)" />
+        <ellipse cx="80" cy="27" rx="31" ry="24" fill="url(#idea-cloud)" />
+        <rect x="20" y="40" width="90" height="30" rx="15" fill="url(#idea-cloud)" />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center pb-2 text-base font-bold text-white">
+        项目雏形
+      </span>
+    </div>
+  );
+}
+
 export function ComicCharacter() {
   return (
-    <div className="relative flex h-[400px] w-[360px] flex-col items-center justify-end">
-      {/* 左右分半背景舞台：工具创新 | 创业创新 */}
-      <div className="absolute inset-x-0 bottom-0 z-0 h-[230px] overflow-hidden rounded-3xl border-2 border-white/25 bg-white/5 shadow-2xl backdrop-blur-sm">
+    <div className="relative flex h-[420px] w-[400px] flex-col items-center justify-end overflow-hidden rounded-3xl shadow-xl">
+      {/* 左右分半大背景：工具创新 | 创业创新，占满整个组件 */}
+      <div className="absolute inset-0">
         {/* 左半：工具创新标志画面 */}
-        <div className="absolute inset-y-0 left-0 flex w-1/2 flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-500/25 to-indigo-600/10">
-          <Wrench className="h-14 w-14 text-blue-200/70" strokeWidth={1.5} />
-          <span className="text-sm font-bold tracking-wider text-blue-100/90">
+        <div className="absolute inset-y-0 left-0 flex w-1/2 flex-col items-center justify-center gap-3 bg-gradient-to-br from-blue-100 to-sky-200">
+          <Wrench className="h-16 w-16 text-blue-500/60" strokeWidth={1.5} />
+          <span className="text-base font-bold tracking-wider text-blue-700">
             工具创新
           </span>
         </div>
         {/* 右半：创业创新标志画面 */}
-        <div className="absolute inset-y-0 right-0 flex w-1/2 flex-col items-center justify-center gap-2 bg-gradient-to-br from-amber-500/25 to-rose-500/10">
-          <Rocket className="h-14 w-14 text-amber-200/70" strokeWidth={1.5} />
-          <span className="text-sm font-bold tracking-wider text-amber-100/90">
+        <div className="absolute inset-y-0 right-0 flex w-1/2 flex-col items-center justify-center gap-3 bg-gradient-to-br from-indigo-100 to-violet-200">
+          <Rocket className="h-16 w-16 text-indigo-500/60" strokeWidth={1.5} />
+          <span className="text-base font-bold tracking-wider text-indigo-700">
             创业创新
           </span>
         </div>
         {/* 中间分割线 */}
-        <div className="absolute inset-y-2 left-1/2 w-px -translate-x-1/2 bg-white/50" />
+        <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/70" />
       </div>
 
-      {/* 气泡聚合区域 */}
+      {/* 气泡聚合区域（位于分半背景图内、小人头顶上方） */}
       <div className="relative z-10 h-[190px] w-full">
-        {/* 三个碎片气泡：依次出现，随后一起聚合 */}
         {BUBBLES.map((bubble) => (
           <motion.div
             key={bubble.label}
@@ -103,17 +147,13 @@ export function ComicCharacter() {
               ease: "easeInOut",
             }}
           >
-            <div
-              className={`flex h-10 items-center justify-center rounded-2xl border-2 px-3 text-sm font-semibold shadow-md ${bubble.color}`}
-            >
-              {bubble.label}
-            </div>
+            <CloudBubble label={bubble.label} fill={bubble.fill} text={bubble.text} />
           </motion.div>
         ))}
 
-        {/* 合并后的「项目雏形」大气泡（位于小人正头顶上方） */}
+        {/* 合并后的「项目雏形」云朵大气泡 */}
         <motion.div
-          className="absolute left-[72px] top-[52px]"
+          className="absolute left-[146px] top-[40px]"
           initial={{ opacity: 0, scale: 0 }}
           animate={{
             opacity: [0, 0, 1, 1, 0, 0],
@@ -126,12 +166,10 @@ export function ComicCharacter() {
             ease: "easeOut",
           }}
         >
-          <div className="flex h-16 items-center justify-center rounded-3xl border-2 border-violet-300 bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 text-lg font-bold text-white shadow-xl shadow-violet-300/50">
-            项目雏形
-          </div>
+          <IdeaCloud />
         </motion.div>
 
-        {/* 灯泡图标 + 发光动效（与项目雏形同步点亮） */}
+        {/* 灯泡图标 + 发光动效 */}
         <motion.div
           className="absolute left-1/2 top-[128px] -translate-x-1/2"
           initial={{ opacity: 0, scale: 0.5, filter: "drop-shadow(0 0 0px rgba(250,204,21,0))" }}

@@ -102,21 +102,21 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row">
       {/* 左侧品牌展示区（窄屏在上，大屏在左） */}
-      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-br from-violet-600 via-fuchsia-600 to-indigo-700 px-6 py-8 lg:flex-1 lg:px-10 lg:py-12">
+      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-b from-sky-100 via-blue-50 to-indigo-100 px-6 py-8 lg:flex-1 lg:px-10 lg:py-12">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="mt-10 text-center"
         >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm text-white/90 backdrop-blur">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-100/70 px-4 py-1.5 text-sm text-blue-700 backdrop-blur">
             <Sparkles className="h-4 w-4" />
             传智杯 AI Web 参赛作品
           </div>
-          <h1 className="text-5xl font-black tracking-tight text-white">
+          <h1 className="text-5xl font-black tracking-tight text-slate-800">
             创意雏形合成助手
           </h1>
-          <p className="mt-4 text-lg text-white/80">
+          <p className="mt-4 text-lg text-slate-600">
             输入零散的痛点、需求与奇思妙想，AI 帮你聚合成完整的项目雏形规划
           </p>
         </motion.div>
@@ -130,7 +130,7 @@ export default function LoginPage() {
           <ComicCharacter />
         </motion.div>
 
-        <p className="pb-6 text-sm text-white/60">
+        <p className="pb-6 text-sm text-slate-500">
           © 2026 创意雏形合成助手 · 让灵感快速落地
         </p>
       </div>

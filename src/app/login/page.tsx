@@ -100,9 +100,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full">
-      {/* 左侧品牌展示区 */}
-      <div className="hidden flex-1 flex-col items-center justify-between bg-gradient-to-br from-violet-600 via-fuchsia-600 to-indigo-700 px-10 py-12 lg:flex">
+    <div className="flex min-h-screen w-full flex-col lg:flex-row">
+      {/* 左侧品牌展示区（窄屏在上，大屏在左） */}
+      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-br from-violet-600 via-fuchsia-600 to-indigo-700 px-6 py-8 lg:flex-1 lg:px-10 lg:py-12">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -135,21 +135,14 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* 右侧表单区 */}
-      <div className="flex w-full flex-1 items-center justify-center bg-background px-6 py-12">
+      {/* 右侧表单区（窄屏在下，大屏在右） */}
+      <div className="flex w-full items-center justify-center bg-background px-6 py-12 lg:flex-1">
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           className="w-full max-w-md"
         >
-          {/* 移动端 Logo */}
-          <div className="mb-8 text-center lg:hidden">
-            <h1 className="text-3xl font-black text-primary">
-              创意雏形合成助手
-            </h1>
-          </div>
-
           <h2 className="mb-6 text-2xl font-bold">欢迎使用</h2>
 
           <Tabs

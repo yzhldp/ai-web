@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Lightbulb, Wrench, Rocket } from "lucide-react";
 
@@ -211,39 +212,21 @@ export function ComicCharacter() {
         </motion.div>
       </div>
 
-      {/* 漫画小人（SVG），站在背景分割线中间 */}
-      <svg
-        width="160"
-        height="150"
-        viewBox="0 0 160 150"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="relative z-10 mt-1"
+      {/* 思考中的人物形象（真实照片），站在左右分半背景的分割线中间 */}
+      <motion.div
+        className="relative z-10 -mb-7 h-[152px] w-[152px] overflow-hidden rounded-full border-4 border-white/90 shadow-2xl"
+        animate={{ y: [0, -4, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
       >
-        {/* 头 */}
-        <circle cx="80" cy="38" r="30" fill="#FDE2B1" stroke="#3B3B3B" strokeWidth="3" />
-        {/* 头发 */}
-        <path
-          d="M50 34 C50 12 110 12 110 34 C110 30 100 24 80 24 C60 24 50 30 50 34 Z"
-          fill="#3B3B3B"
+        <Image
+          src="/images/character.jpg"
+          alt="正在思考创意的年轻人"
+          width={152}
+          height={152}
+          priority
+          className="h-full w-full object-cover object-top"
         />
-        {/* 眼睛 */}
-        <circle cx="70" cy="40" r="3.5" fill="#3B3B3B" />
-        <circle cx="90" cy="40" r="3.5" fill="#3B3B3B" />
-        {/* 腮红 */}
-        <circle cx="63" cy="48" r="4" fill="#FFB3C1" opacity="0.7" />
-        <circle cx="97" cy="48" r="4" fill="#FFB3C1" opacity="0.7" />
-        {/* 微笑 */}
-        <path d="M72 52 Q80 60 88 52" stroke="#3B3B3B" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-        {/* 身体 */}
-        <rect x="55" y="72" width="50" height="46" rx="14" fill="#7C5CFF" stroke="#3B3B3B" strokeWidth="3" />
-        {/* 手臂 */}
-        <path d="M55 84 L38 100" stroke="#3B3B3B" strokeWidth="6" strokeLinecap="round" />
-        <path d="M105 84 L122 100" stroke="#3B3B3B" strokeWidth="6" strokeLinecap="round" />
-        {/* 腿 */}
-        <path d="M68 118 L64 140" stroke="#3B3B3B" strokeWidth="7" strokeLinecap="round" />
-        <path d="M92 118 L96 140" stroke="#3B3B3B" strokeWidth="7" strokeLinecap="round" />
-      </svg>
+      </motion.div>
     </div>
   );
 }

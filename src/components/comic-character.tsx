@@ -99,24 +99,39 @@ function IdeaCloud() {
 export function ComicCharacter() {
   return (
     <div className="relative flex h-[420px] w-[400px] flex-col items-center justify-end overflow-hidden rounded-3xl shadow-xl">
-      {/* 左右分半大背景：工具创新 | 创业创新，占满整个组件 */}
+      {/* 左右分半大背景：工具创新 | 创业创新，使用真实场景图片占满 */}
       <div className="absolute inset-0">
-        {/* 左半：工具创新标志画面 */}
-        <div className="absolute inset-y-0 left-0 flex w-1/2 flex-col items-center justify-center gap-3 bg-gradient-to-br from-blue-100 to-sky-200">
-          <Wrench className="h-16 w-16 text-blue-500/60" strokeWidth={1.5} />
-          <span className="text-base font-bold tracking-wider text-blue-700">
-            工具创新
-          </span>
+        {/* 左半：工具创新场景图 */}
+        <div className="absolute inset-y-0 left-0 w-1/2 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: "url('/images/tool-innovation.jpg')" }}
+          />
+          {/* 压暗遮罩，保证气泡与文字清晰可读 */}
+          <div className="absolute inset-0 bg-slate-900/45" />
+          <div className="relative flex h-full flex-col items-center justify-center gap-2">
+            <Wrench className="h-14 w-14 text-white/85" strokeWidth={1.5} />
+            <span className="text-base font-bold tracking-wider text-white drop-shadow">
+              工具创新
+            </span>
+          </div>
         </div>
-        {/* 右半：创业创新标志画面 */}
-        <div className="absolute inset-y-0 right-0 flex w-1/2 flex-col items-center justify-center gap-3 bg-gradient-to-br from-indigo-100 to-violet-200">
-          <Rocket className="h-16 w-16 text-indigo-500/60" strokeWidth={1.5} />
-          <span className="text-base font-bold tracking-wider text-indigo-700">
-            创业创新
-          </span>
+        {/* 右半：创业创新场景图 */}
+        <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: "url('/images/business-innovation.jpg')" }}
+          />
+          <div className="absolute inset-0 bg-slate-900/40" />
+          <div className="relative flex h-full flex-col items-center justify-center gap-2">
+            <Rocket className="h-14 w-14 text-white/85" strokeWidth={1.5} />
+            <span className="text-base font-bold tracking-wider text-white drop-shadow">
+              创业创新
+            </span>
+          </div>
         </div>
         {/* 中间分割线 */}
-        <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/70" />
+        <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/60" />
       </div>
 
       {/* 气泡聚合区域（位于分半背景图内、小人头顶上方） */}

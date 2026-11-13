@@ -27,6 +27,7 @@
 - 内置 8 篇领域知识、32 个知识切块：技术选型、AI 架构、商业模式、MVP、排期、合规、行业案例、交互设计；
 - 中文二元组分词 + 同义词扩展，**BM25 + 稀疏向量余弦混合检索**；
 - 生成内容标注 `[编号]` 来源，前端可查看每条依据的双通道得分；
+- 内置 10 条标注评测集，一键查看 **Recall@6 / HitRate / MRR**，量化检索效果；
 - 无需外部向量数据库，Docker 单机即可运行。
 
 ### Function Calling 工具集成
@@ -35,6 +36,7 @@
 - `recommend_tech_stack`：按场景 / 团队规模推荐技术栈
 - `estimate_schedule`：按模块数与复杂度估算排期
 - `risk_checklist`：生成技术 / 市场 / 合规风险清单
+- `web_search`：通过 Tavily 联网获取最新政策、市场价格与竞品动态
 
 工具参数由 Zod 约束；模型不支持工具调用时自动切换确定性规则引擎。
 
@@ -62,9 +64,11 @@
 ### 其他功能
 
 - 双模式：🛠️ 工具创新（软件开发规划） / 💼 创业创新（商业项目规划）
-- 方案迭代优化、方案自动保存、评论交流、历史方案管理
+- 方案迭代复用完整 Agent 工作流，迭代后自动刷新知识依据、质检与架构图
+- 方案详情支持导出 Markdown、打印 / 另存 PDF
+- 方案自动保存、评论交流、历史方案管理
 - 悬浮创意助手：通用问答 + 路由指令识别（如「跳转到工具创新」）
-- 账号体系：注册 / 登录 / 退出，JWT + HttpOnly Cookie
+- 账号体系：注册 / 登录 / 退出，JWT + HttpOnly Cookie；方案与评论仅本人可见
 
 ---
 
@@ -121,7 +125,7 @@ pnpm install
 
 # 2. 配置环境变量
 cp .env.example .env
-# 编辑 .env，至少填写 DEEPSEEK_API_KEY 与 JWT_SECRET
+# 编辑 .env，至少填写一个模型供应商密钥（如 DEEPSEEK_API_KEY）与 JWT_SECRET
 
 # 3. 初始化数据库
 pnpm db:push
@@ -137,6 +141,25 @@ pnpm dev
 ```bash
 pnpm build
 pnpm start
+```
+
+### 评审快速体验（3 分钟）
+
+1. 启动服务（Docker Compose 或 `pnpm dev`），确保至少配置了一个模型供应商密钥；
+2. 注册账号，进入 `/tool` 或 `/business`；
+3. 点击「填入示例」→「创新合成」，观察五阶段 Agent 时间线；
+4. 切换「依据 / 质检 / 架构图 / 知识库」标签，查看检索得分、质量评分与架构图；
+5. 在「知识库」标签点击「运行评测」，查看 Recall@6 / HitRate / MRR；
+6. 在方案下方追加补充需求，验证迭代会重新执行 Agent 并刷新质检与架构图；
+7. 打开「个人主页 → AI 审计」，查看模型路由、Token 消耗、自动切换次数与模型评测。
+
+### 开发与测试
+
+```bash
+pnpm lint          # ESLint
+pnpm test          # Vitest 单元测试
+pnpm exec tsc --noEmit
+pnpm build         # 生产构建
 ```
 
 ---
@@ -198,6 +221,7 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | `OLLAMA_BASE_URL` | 否* | 本地 Ollama 地址，填写即启用 | `http://host.docker.internal:11434/v1` |
 | `AI_PROVIDER_ORDER` | 否 | 供应商优先级与白名单，逗号分隔 | `deepseek,qwen,openai` |
 | `AI_DISABLE_FALLBACK` | 否 | 关闭自动切换，仅用第一个供应商 | `true` / `false` |
+| `TAVILY_API_KEY` | 否 | 联网搜索工具密钥（启用 `web_search`） | 在 tavily.com 申请 |
 | `JWT_SECRET` | 是 | JWT 签名密钥（生产务必修改） | `openssl rand -base64 48` |
 | `VISION_MODEL` | 否 | 视觉模型名称，用于参考图理解 | `qwen-vl-max` / `gpt-4o-mini` |
 | `VISION_BASE_URL` | 否 | 视觉模型 OpenAI 兼容地址 | — |

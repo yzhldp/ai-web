@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { signToken, AUTH_COOKIE } from "@/lib/auth";
-import { isHttpsRequest } from "@/lib/rate-limit";
+import { getClientIp, isHttpsRequest, rateLimit } from "@/lib/rate-limit";
+
+/** 同一 IP 每分钟最多尝试登录次数，防止暴力破解 */
+const LOGIN_LIMIT_PER_MINUTE = 10;
 
 /**
  * 登录接口
@@ -10,6 +13,18 @@ import { isHttpsRequest } from "@/lib/rate-limit";
  */
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(
+      `login:${getClientIp(request)}`,
+      LOGIN_LIMIT_PER_MINUTE,
+      60 * 1000
+    );
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: "登录尝试过于频繁，请稍后再试" },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+      );
+    }
+
     const { username, password } = await request.json();
 
     if (!username || !password) {

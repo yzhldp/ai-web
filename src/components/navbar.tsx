@@ -39,7 +39,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/80 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/80 backdrop-blur-md print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         {/* Logo */}
         <Link href="/home" className="flex items-center gap-2">
@@ -50,7 +50,7 @@ export function Navbar() {
         </Link>
 
         {/* 导航项 */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav aria-label="主导航" className="hidden items-center gap-1 md:flex">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
             return (
@@ -92,7 +92,7 @@ export function Navbar() {
       </div>
 
       {/* 移动端底部导航 */}
-      <nav className="flex items-center justify-around border-t py-2 md:hidden">
+      <nav aria-label="移动端导航" className="flex items-center justify-around border-t py-2 md:hidden">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
           return (

@@ -236,6 +236,59 @@ export function summarizeRisks(items: RiskItem[]): string {
   return items.map((item) => `[${item.level}] ${item.risk} → ${item.mitigation}`).join("\n");
 }
 
+/** 联网搜索工具：通过 Tavily API 获取最新公开信息 */
+const webSearchTool = tool({
+  description:
+    "联网搜索最新公开信息（政策、市场价格、竞品动态等）。需要配置 TAVILY_API_KEY；未配置时会返回不可用说明。",
+  parameters: z.object({
+    query: z.string().min(1).describe("搜索关键词"),
+    maxResults: z.number().min(1).max(5).optional().describe("返回条数，默认 3"),
+  }),
+  execute: async ({ query, maxResults }) => {
+    const apiKey = process.env.TAVILY_API_KEY;
+    if (!apiKey) {
+      return {
+        configured: false,
+        results: [],
+        note: "未配置 TAVILY_API_KEY，无法联网搜索；请基于知识库作答并标注推测。",
+      };
+    }
+
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query,
+        max_results: maxResults ?? 3,
+        search_depth: "basic",
+        include_answer: false,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`联网搜索失败（HTTP ${response.status}）`);
+    }
+
+    const data = (await response.json()) as {
+      results?: { title?: string; url?: string; content?: string }[];
+    };
+
+    const results = (data.results ?? []).slice(0, 3).map((item) => ({
+      title: item.title ?? "",
+      url: item.url ?? "",
+      content: (item.content ?? "").slice(0, 280),
+    }));
+
+    return {
+      configured: true,
+      results,
+      note: results.length ? "以下为联网搜索结果，请在引用时说明来源。" : "未搜索到结果。",
+    };
+  },
+});
+
 /** AI SDK Function Calling 工具集合 */
 export const planningTools = {
   search_knowledge_base: tool({
@@ -293,6 +346,8 @@ export const planningTools = {
       return { items, summary: summarizeRisks(items) };
     },
   }),
+
+  web_search: webSearchTool,
 };
 
 /**

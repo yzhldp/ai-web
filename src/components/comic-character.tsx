@@ -106,7 +106,7 @@ export function ComicCharacter() {
         <div className="absolute inset-y-0 left-0 w-1/2 overflow-hidden">
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/images/tool-innovation.jpg')" }}
+            style={{ backgroundImage: "url('/images/tool-innovation.webp')" }}
           />
           {/* 压暗遮罩，保证气泡与文字清晰可读 */}
           <div className="absolute inset-0 bg-slate-900/45" />
@@ -121,7 +121,7 @@ export function ComicCharacter() {
         <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/images/business-innovation.jpg')" }}
+            style={{ backgroundImage: "url('/images/business-innovation.webp')" }}
           />
           <div className="absolute inset-0 bg-slate-900/40" />
           <div className="relative flex h-full flex-col items-center justify-center gap-2">
@@ -219,7 +219,7 @@ export function ComicCharacter() {
         transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
       >
         <Image
-          src="/images/character.jpg"
+          src="/images/character.webp"
           alt="正在思考创意的年轻人"
           width={152}
           height={152}

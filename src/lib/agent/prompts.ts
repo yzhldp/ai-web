@@ -43,10 +43,16 @@ export function buildAnalysisPrompt(input: {
   demand: string;
   idea: string;
   imageInsight?: string | null;
+  instruction?: string;
+  context?: string;
 }) {
   const imagePart = input.imageInsight
     ? `\n\n参考图理解结果（来自多模态模型的客观描述）：\n${input.imageInsight}`
     : "";
+  const iteratePart =
+    input.context || input.instruction
+      ? `\n\n当前方案（迭代基础，节选）：\n${(input.context ?? "").slice(0, 4000)}\n\n补充需求：${input.instruction || "无"}`
+      : "";
   return `请分析下面这份零散的创业/产品素材，提取结构化信息，用于后续生成${MODE_NAME[input.mode]}。
 
 痛点描述：
@@ -56,13 +62,13 @@ ${input.painPoint || "（未填写）"}
 ${input.demand || "（未填写）"}
 
 奇思妙想：
-${input.idea || "（未填写）"}${imagePart}
+${input.idea || "（未填写）"}${imagePart}${iteratePart}
 
 要求：
 1. summary 用一句话概括项目，不超过 40 字；
 2. domain 给出最贴近的行业领域；
 3. 关键词要覆盖行业、场景、技术、商业模式四类，便于后续检索；
-4. 不要编造用户未提及的强约束。`;
+4. 若为迭代场景，请同时考虑补充需求，但不要编造用户未提及的强约束。`;
 }
 
 /** 阶段三：工具推理（Function Calling） */
@@ -72,11 +78,17 @@ export function buildToolSystemPrompt() {
 工具使用规则：
 1. 至少调用 recommend_tech_stack、estimate_schedule、risk_checklist 三个工具；
 2. 需要行业最佳实践或事实依据时调用 search_knowledge_base；
-3. 调用完成后，用不超过 300 字总结工具结论，分点列出关键技术选型、工期与高风险项；
-4. 不要输出完整方案，只输出调研结论。${SAFETY_SYSTEM_SUFFIX}`;
+3. 涉及最新政策、市场价格、竞品动态时可调用 web_search；若返回未配置或空结果，不要编造；
+4. 调用完成后，用不超过 300 字总结工具结论，分点列出关键技术选型、工期与高风险项；
+5. 不要输出完整方案，只输出调研结论。${SAFETY_SYSTEM_SUFFIX}`;
 }
 
-export function buildToolUserPrompt(analysis: PlanAnalysis, mode: "tool" | "business", sources: SourceRef[]) {
+export function buildToolUserPrompt(
+  analysis: PlanAnalysis,
+  mode: "tool" | "business",
+  sources: SourceRef[],
+  instruction?: string
+) {
   const sourceBrief = sources
     .slice(0, 4)
     .map((source, index) => `[${index + 1}] ${source.docTitle}·${source.heading}：${source.content.slice(0, 160)}`)
@@ -87,6 +99,7 @@ export function buildToolUserPrompt(analysis: PlanAnalysis, mode: "tool" | "busi
 目标用户：${analysis.targetUsers.join("、") || "未明确"}
 核心功能：${analysis.keyFeatures.join("、") || "未明确"}
 约束条件：${analysis.constraints.join("、") || "未明确"}
+补充需求：${instruction || "无"}
 知识库已有参考：
 ${sourceBrief || "（暂无）"}
 
@@ -94,7 +107,10 @@ ${sourceBrief || "（暂无）"}
 }
 
 /** 阶段四：带依据的方案生成 */
-export function buildGroundedSystemPrompt(mode: "tool" | "business") {
+export function buildGroundedSystemPrompt(mode: "tool" | "business", iterate = false) {
+  const iterateRule = iterate
+    ? "\n9. 【迭代要求】请输出更新后的完整方案，而不是差异说明；保留仍然有效的章节，并明确体现补充需求带来的变化。"
+    : "";
   return `你是一位资深的${mode === "tool" ? "软件产品架构师与技术规划专家" : "创业顾问与商业分析师"}，擅长把零散素材整合为可落地的${MODE_NAME[mode]}。
 
 输出要求：
@@ -105,7 +121,7 @@ export function buildGroundedSystemPrompt(mode: "tool" | "business") {
 5. 【参考图】若提供了图片理解结果，需在「项目总览」中说明如何回应图中信息；
 6. 若参考资料不足以支撑某个结论，明确标注「推测」而不是编造数据；
 7. 语言使用中文，全文控制在 1200-2200 字；
-8. 文末追加一行：> 本方案由 AI 生成，仅为创意参考，不代表绝对可行性。${SAFETY_SYSTEM_SUFFIX}`;
+8. 文末追加一行：> 本方案由 AI 生成，仅为创意参考，不代表绝对可行性。${iterateRule}${SAFETY_SYSTEM_SUFFIX}`;
 }
 
 export function buildGroundedUserPrompt(input: {
@@ -117,6 +133,8 @@ export function buildGroundedUserPrompt(input: {
   sources: SourceRef[];
   tools: ToolTrace[];
   imageInsight?: string | null;
+  instruction?: string;
+  context?: string;
 }) {
   const references = input.sources.length
     ? input.sources
@@ -135,6 +153,10 @@ export function buildGroundedUserPrompt(input: {
     ? `\n\n【参考图理解】\n${input.imageInsight}`
     : "";
 
+  const iteratePart = input.context
+    ? `\n\n【当前方案（迭代基础）】\n${input.context.slice(0, 12000)}\n\n【本次补充需求】\n${input.instruction || "无"}`
+    : "";
+
   return `【用户原始素材】
 痛点：${input.painPoint || "未填写"}
 需求：${input.demand || "未填写"}
@@ -147,9 +169,9 @@ ${JSON.stringify(input.analysis, null, 2)}
 ${references}
 
 【工具调研结论】
-${toolNotes}${imagePart}
+${toolNotes}${imagePart}${iteratePart}
 
-请基于以上材料输出完整方案。`;
+请基于以上材料输出完整方案${input.context ? "（迭代场景：输出更新后的完整方案，不要只输出差异）" : ""}。`;
 }
 
 /** 阶段五：质检 + 架构图 */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Markdown } from "@/components/markdown";
 import { CommentSection } from "@/components/comment-section";
+import { readSSE } from "@/lib/sse";
+import { compressImageFile } from "@/lib/image";
 import {
   AgentTimeline,
   createInitialStages,
@@ -117,6 +119,12 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const toolStartedAtRef = useRef<Record<string, number>>({});
+  const planIdRef = useRef<string | null>(null);
+  const runKindRef = useRef<"generate" | "iterate">("generate");
+
+  useEffect(() => {
+    planIdRef.current = planId;
+  }, [planId]);
 
   const flushContent = useCallback(() => {
     if (flushTimerRef.current) {
@@ -168,6 +176,7 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
         });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload.error || "方案保存失败");
+        planIdRef.current = payload.plan.id;
         setPlanId(payload.plan.id);
         toast.success("方案已生成并保存");
       } catch (err) {
@@ -176,6 +185,33 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
     },
     [mode, painPoint, demand, idea, image]
   );
+
+  /** 迭代完成后更新方案内容与全部 AI 元数据 */
+  const updatePlan = useCallback(async (data: AgentPublicResult) => {
+    const id = planIdRef.current;
+    if (!id) {
+      toast.error("方案未保存，无法更新迭代结果");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/plans/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: data.content,
+          analysis: data.analysis ? JSON.stringify(data.analysis) : null,
+          sources: JSON.stringify(data.sources),
+          quality: data.quality ? JSON.stringify(data.quality) : null,
+          diagram: data.diagram,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || "方案更新失败");
+      toast.success("方案迭代完成，质检与架构图已同步更新");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "方案更新失败");
+    }
+  }, []);
 
   /** 处理一条 SSE 事件 */
   const handleEvent = useCallback(
@@ -269,28 +305,33 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
                 : item
             )
           );
-          void savePlan(event.data);
+          if (runKindRef.current === "iterate") {
+            void updatePlan(event.data);
+          } else {
+            void savePlan(event.data);
+          }
           break;
         }
         case "error":
           throw new Error(event.message);
       }
     },
-    [appendToken, savePlan, updateStage]
+    [appendToken, savePlan, updatePlan, updateStage]
   );
 
-  /** 生成方案（Agent SSE） */
-  async function handleGenerate() {
-    if (!painPoint.trim() && !demand.trim() && !idea.trim()) {
-      toast.error("请至少填写一项内容");
-      return;
-    }
-
+  /** 统一的 Agent 流式执行（生成 / 迭代共用） */
+  async function runAgentStream(params: {
+    action: "generate" | "iterate";
+    instruction?: string;
+    context?: string;
+  }): Promise<boolean> {
+    const isIterate = params.action === "iterate";
     const controller = new AbortController();
     abortRef.current = controller;
+    runKindRef.current = params.action;
+
     setGenerating(true);
     setContent("");
-    setPlanId(null);
     setStages(createInitialStages());
     setAnalysis(null);
     setSources([]);
@@ -304,6 +345,12 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
     setTab("plan");
     fullContentRef.current = "";
     toolStartedAtRef.current = {};
+    if (!isIterate) {
+      planIdRef.current = null;
+      setPlanId(null);
+    }
+
+    let completed = false;
 
     try {
       const res = await fetch("/api/agent/generate", {
@@ -312,11 +359,14 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
         signal: controller.signal,
         body: JSON.stringify({
           mode,
+          action: params.action,
           painPoint,
           demand,
           idea,
+          instruction: params.instruction ?? "",
+          context: params.context ?? "",
           deep,
-          image,
+          image: isIterate ? null : image,
         }),
       });
 
@@ -325,31 +375,11 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
         throw new Error(err?.error || "AI 生成失败，请稍后重试");
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split("\n\n");
-        buffer = frames.pop() ?? "";
-        for (const frame of frames) {
-          const dataLine = frame
-            .split("\n")
-            .find((line) => line.startsWith("data:"));
-          if (!dataLine) continue;
-          const payload = dataLine.slice(5).trim();
-          if (!payload) continue;
-          handleEvent(JSON.parse(payload) as AgentEvent);
-        }
-      }
-
-      if (buffer.trim().startsWith("data:")) {
-        const payload = buffer.trim().slice(5).trim();
-        if (payload) handleEvent(JSON.parse(payload) as AgentEvent);
-      }
+      await readSSE(res, (payload) => {
+        const event = payload as AgentEvent;
+        if (event.type === "done") completed = true;
+        handleEvent(event);
+      });
       flushContent();
     } catch (err) {
       setStages((prev) =>
@@ -373,65 +403,42 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
       setGenerating(false);
       abortRef.current = null;
     }
+
+    return completed;
   }
 
-  /** 迭代优化当前方案 */
+  /** 生成新方案 */
+  async function handleGenerate() {
+    if (!painPoint.trim() && !demand.trim() && !idea.trim()) {
+      toast.error("请至少填写一项内容");
+      return;
+    }
+    await runAgentStream({ action: "generate" });
+  }
+
+  /** 基于当前方案迭代，重新执行完整 Agent 工作流 */
   async function handleIterate() {
     if (!extraInput.trim()) {
       toast.error("请输入补充需求");
       return;
     }
-    if (!planId) {
+    if (!planIdRef.current) {
       toast.error("请先生成方案");
       return;
     }
+    const previous = content || fullContentRef.current;
+    if (!previous.trim()) {
+      toast.error("当前方案内容为空，无法迭代");
+      return;
+    }
 
-    setGenerating(true);
-    const previous = content;
-    fullContentRef.current = "";
-    setContent("");
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "iterate",
-          mode,
-          messages: [{ role: "user", content: `补充需求：${extraInput}` }],
-          context: previous,
-        }),
-      });
-
-      if (!res.ok || !res.body) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error || "AI 生成失败，请稍后重试");
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        full += decoder.decode(value, { stream: true });
-        setContent(full);
-      }
-      fullContentRef.current = full;
-
-      const updateRes = await fetch(`/api/plans/${planId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: full }),
-      });
-      if (updateRes.ok) {
-        toast.success("方案迭代完成");
-      }
+    const completed = await runAgentStream({
+      action: "iterate",
+      instruction: extraInput,
+      context: previous,
+    });
+    if (completed) {
       setExtraInput("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "迭代失败");
-      if (!fullContentRef.current) setContent(previous);
-    } finally {
-      setGenerating(false);
     }
   }
 
@@ -448,30 +455,7 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
     }
 
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const img = new Image();
-          img.onload = () => {
-            const maxSide = 1280;
-            const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.round(img.width * scale);
-            canvas.height = Math.round(img.height * scale);
-            const ctx = canvas.getContext("2d");
-            if (!ctx) {
-              reject(new Error("图片处理失败"));
-              return;
-            }
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL("image/jpeg", 0.82));
-          };
-          img.onerror = () => reject(new Error("图片读取失败"));
-          img.src = String(reader.result);
-        };
-        reader.onerror = () => reject(new Error("图片读取失败"));
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = await compressImageFile(file, { maxSide: 1280, quality: 0.82 });
       setImage(dataUrl);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "图片处理失败");

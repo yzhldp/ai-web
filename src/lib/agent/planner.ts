@@ -17,7 +17,7 @@ import {
 } from "@/lib/ai/failover";
 import { listProviders } from "@/lib/ai/providers";
 import { searchKnowledge, tokenize } from "@/lib/rag";
-import { sanitizeOutput } from "@/lib/safety";
+import { inspectOutput, sanitizeOutput, validateCitations } from "@/lib/safety";
 import {
   analysisSchema,
   qualitySchema,
@@ -60,6 +60,12 @@ export interface RunAgentInput {
   imageDataUrl?: string | null;
   /** 客户端断连信号，用于中止模型调用 */
   signal?: AbortSignal;
+  /** generate：新建方案；iterate：基于当前方案迭代 */
+  action?: "generate" | "iterate";
+  /** 迭代补充需求 */
+  instruction?: string;
+  /** 迭代所基于的当前方案全文 */
+  context?: string;
   emit: (event: AgentEvent) => void;
 }
 
@@ -93,8 +99,12 @@ export function heuristicAnalysis(input: {
   painPoint: string;
   demand: string;
   idea: string;
+  instruction?: string;
+  context?: string;
 }): PlanAnalysis {
-  const raw = [input.painPoint, input.demand, input.idea].filter(Boolean).join("\n");
+  const raw = [input.painPoint, input.demand, input.idea, input.instruction, input.context?.slice(0, 2000)]
+    .filter(Boolean)
+    .join("\n");
   const sentences = raw
     .split(/[。！？!?；;\n]/)
     .map((item) => item.trim())
@@ -216,7 +226,7 @@ async function runToolStage(
     const started = Date.now();
     const result = await generateTextWithFailover({
       system: buildToolSystemPrompt(),
-      prompt: buildToolUserPrompt(analysis, input.mode, sources),
+      prompt: buildToolUserPrompt(analysis, input.mode, sources, input.instruction),
       tools: planningTools,
       maxSteps: 3,
       temperature: 0.2,
@@ -401,6 +411,8 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
     input.painPoint,
     input.demand,
     input.idea,
+    input.instruction,
+    input.context?.slice(0, 1500),
   ]
     .filter(Boolean)
     .join(" ");
@@ -434,8 +446,15 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
 
   // ===== 阶段四：方案生成（流式） =====
   const generateStart = Date.now();
-  stageStart("generate", deep ? "基于检索依据与工具结论生成完整方案" : "快速模式：单次流式生成");
-  const system = buildGroundedSystemPrompt(mode);
+  stageStart(
+    "generate",
+    input.action === "iterate"
+      ? "基于当前方案与补充需求输出更新后的完整方案"
+      : deep
+        ? "基于检索依据与工具结论生成完整方案"
+        : "快速模式：单次流式生成"
+  );
+  const system = buildGroundedSystemPrompt(mode, input.action === "iterate");
   const prompt = buildGroundedUserPrompt({
     ...input,
     analysis,
@@ -479,6 +498,23 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
   const sanitized = sanitizeOutput(fullContent, { requireDisclaimer: true });
   safetyFlags.push(...sanitized.flags);
   fullContent = sanitized.content;
+
+  // 引用编号校验：移除超出检索来源数量的引用，避免编造依据
+  const citationCheck = validateCitations(fullContent, sources.length);
+  fullContent = citationCheck.content;
+  if (citationCheck.invalid.length) {
+    safetyFlags.push(`已移除非法引用 [${citationCheck.invalid.join(",")}]`);
+  }
+  if (sources.length > 0 && citationCheck.validCount === 0) {
+    safetyFlags.push("正文未引用知识库依据");
+  }
+
+  // 输出侧风险扫描：仅记录标记，不直接改写正文
+  const outputRisks = inspectOutput(fullContent);
+  if (outputRisks.length) {
+    safetyFlags.push(...outputRisks.map((risk) => `输出风险·${risk}`));
+  }
+
   if (!fullContent.trim()) {
     throw new Error("AI 未返回有效内容，请稍后重试或检查模型配置");
   }

@@ -163,3 +163,40 @@ export function sanitizeOutput(
 
   return { content: result.trim(), flags };
 }
+
+/**
+ * 校验正文中的引用编号
+ * 超出检索来源数量的 [n] 会被移除，避免模型编造不存在的依据。
+ */
+export function validateCitations(
+  content: string,
+  sourceCount: number
+): { content: string; invalid: number[]; validCount: number } {
+  const invalid: number[] = [];
+  let validCount = 0;
+
+  const result = content.replace(/\[(\d{1,2})\]/g, (match, raw) => {
+    const index = Number(raw);
+    if (index >= 1 && index <= sourceCount) {
+      validCount += 1;
+      return match;
+    }
+    invalid.push(index);
+    return "";
+  });
+
+  return { content: result, invalid: Array.from(new Set(invalid)), validCount };
+}
+
+/** 输出侧风险扫描：命中违法违规关键词时返回标记，不直接阻断正文 */
+export function inspectOutput(content: string): string[] {
+  const flags: string[] = [];
+  for (const rule of ILLEGAL_PATTERNS) {
+    if (rule.pattern.test(content)) {
+      flags.push(rule.category);
+    }
+    // 重置全局正则的 lastIndex，避免后续匹配错位
+    rule.pattern.lastIndex = 0;
+  }
+  return flags;
+}

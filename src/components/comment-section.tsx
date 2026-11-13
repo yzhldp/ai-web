@@ -147,12 +147,15 @@ export function CommentSection({ planId }: { planId: string | null }) {
       {/* 评论输入 */}
       <form onSubmit={handleSubmit} className="space-y-3">
         <Textarea
-          placeholder="发表你的看法..."
+          placeholder="发表你的看法...（最多 500 字，仅本人可见）"
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          maxLength={500}
           rows={3}
+          aria-label="评论内容"
         />
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          <span className="text-[11px] text-muted-foreground">{content.length}/500</span>
           <Button type="submit" disabled={submitting} className="gap-2">
             <Send className="h-4 w-4" />
             {submitting ? "发布中..." : "发布评论"}

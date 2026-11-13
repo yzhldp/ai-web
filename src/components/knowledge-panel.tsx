@@ -14,6 +14,23 @@ interface KnowledgeStats {
   docs: { id: string; title: string; category: string; tags: string[]; chunks: number }[];
 }
 
+interface RagEvalCase {
+  query: string;
+  expectedDocIds: string[];
+  recall: number;
+  hit: boolean;
+  reciprocalRank: number;
+}
+
+interface RagEvalSummary {
+  topK: number;
+  caseCount: number;
+  avgRecall: number;
+  hitRate: number;
+  mrr: number;
+  cases: RagEvalCase[];
+}
+
 const SAMPLE_QUERIES = ["AI 应用如何做 RAG", "小团队开发排期怎么估", "教育产品合规风险"];
 
 /**
@@ -27,6 +44,9 @@ export function KnowledgePanel() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
+  const [evaluating, setEvaluating] = useState(false);
+  const [evaluation, setEvaluation] = useState<RagEvalSummary | null>(null);
+  const [evalError, setEvalError] = useState("");
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -75,6 +95,21 @@ export function KnowledgePanel() {
         正在加载知识库索引...
       </div>
     );
+  }
+
+  async function runEvaluation() {
+    setEvaluating(true);
+    setEvalError("");
+    try {
+      const res = await fetch("/api/knowledge/evaluate", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "评测失败");
+      setEvaluation(data);
+    } catch (err) {
+      setEvalError(err instanceof Error ? err.message : "评测失败");
+    } finally {
+      setEvaluating(false);
+    }
   }
 
   return (
@@ -169,6 +204,80 @@ export function KnowledgePanel() {
           ))}
         </div>
       )}
+
+      {/* RAG 量化评测 */}
+      <div className="rounded-lg border bg-background p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold">检索质量评测</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              内置 10 条标注查询，计算 Recall@6 / HitRate / MRR
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            onClick={runEvaluation}
+            disabled={evaluating}
+          >
+            {evaluating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {evaluating ? "评测中..." : "运行评测"}
+          </Button>
+        </div>
+
+        {evalError && <p className="mt-2 text-xs text-destructive">{evalError}</p>}
+
+        {evaluation && (
+          <>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {[
+                { label: `Recall@${evaluation.topK}`, value: `${(evaluation.avgRecall * 100).toFixed(1)}%` },
+                { label: "HitRate", value: `${(evaluation.hitRate * 100).toFixed(1)}%` },
+                { label: "MRR", value: evaluation.mrr.toFixed(3) },
+              ].map((metric) => (
+                <div key={metric.label} className="rounded-md bg-muted/40 p-2 text-center">
+                  <p className="text-sm font-bold text-primary">{metric.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{metric.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 space-y-1">
+              {evaluation.cases.map((item) => (
+                <div
+                  key={item.query}
+                  className="flex items-center gap-2 rounded bg-muted/30 px-2 py-1 text-[11px]"
+                >
+                  <span className="min-w-0 flex-1 truncate" title={item.query}>
+                    {item.query}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] ${
+                      item.hit
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-red-50 text-red-700"
+                    }`}
+                  >
+                    {item.hit ? "命中" : "未命中"}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    Recall {Math.round(item.recall * 100)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              指标用于开发期对比检索策略，不代表线上真实查询分布。
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

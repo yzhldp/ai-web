@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
 import { AuditPanel } from "@/components/audit-panel";
+import { ExportButtons } from "@/components/export-buttons";
 
 interface UserInfo {
   id: string;
@@ -256,12 +258,13 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
                 className="h-9 w-40"
                 autoFocus
               />
-              <Button size="icon" variant="ghost" onClick={handleSaveNickname}>
+              <Button size="icon" variant="ghost" aria-label="保存昵称" onClick={handleSaveNickname}>
                 <Check className="h-4 w-4" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
+                aria-label="取消修改昵称"
                 onClick={() => {
                   setEditing(false);
                   setNicknameInput(user.nickname ?? "");
@@ -331,6 +334,20 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
           </DialogHeader>
           {detailPlan && (
             <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Link
+                  href={`/plans/${detailPlan.id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  打开独立详情页
+                </Link>
+                <ExportButtons
+                  content={detailPlan.content}
+                  title={
+                    detailPlan.mode === "tool" ? "工具创新方案" : "创业创新方案"
+                  }
+                />
+              </div>
               <div className="grid gap-2 rounded-lg bg-muted/50 p-3 text-sm">
                 <p>
                   <span className="font-semibold">痛点：</span>

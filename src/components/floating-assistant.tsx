@@ -56,6 +56,7 @@ export function FloatingAssistant() {
       {/* 悬浮球按钮 */}
       <motion.button
         onClick={() => setOpen((v) => !v)}
+        aria-label={open ? "关闭创意助手" : "打开创意助手"}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/40"
@@ -127,7 +128,7 @@ export function FloatingAssistant() {
                 placeholder="输入你的问题..."
                 className="flex-1"
               />
-              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+              <Button type="submit" size="icon" aria-label="发送消息" disabled={isLoading || !input.trim()}>
                 <Send className="h-4 w-4" />
               </Button>
             </form>

@@ -67,8 +67,17 @@ export async function POST(request: Request) {
   }
   const input = parsed.data;
 
+  if (input.action === "iterate" && !input.context.trim()) {
+    return jsonError("迭代需要提供当前方案上下文", 400);
+  }
+
   // 输入安全审查（违法违规 / 提示词注入）
-  const safety = inspectInput([input.painPoint, input.demand, input.idea]);
+  const safety = inspectInput([
+    input.painPoint,
+    input.demand,
+    input.idea,
+    input.instruction,
+  ]);
   if (!safety.allowed) {
     await writeAudit({
       userId: user.id,
@@ -86,9 +95,16 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
   const encoder = new TextEncoder();
 
+  // 客户端断连或主动取消时，统一中止上游模型调用
+  const abortController = new AbortController();
+  const onRequestAbort = () => abortController.abort();
+  request.signal.addEventListener("abort", onRequestAbort, { once: true });
+
+  let closed = false;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let closed = false;
       const send = (event: AgentEvent) => {
         if (closed) return;
         try {
@@ -98,35 +114,58 @@ export async function POST(request: Request) {
         }
       };
 
+      // SSE 心跳：避免长耗时生成被反向代理判定为空闲连接
+      heartbeat = setInterval(() => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(": ping\n\n"));
+        } catch {
+          closed = true;
+        }
+      }, 15000);
+
       try {
         const result = await runAgent({
           mode: input.mode,
+          action: input.action,
           painPoint: input.painPoint,
           demand: input.demand,
           idea: input.idea,
+          instruction: input.instruction,
+          context: input.context,
           deep: input.deep,
           imageDataUrl: input.image ?? null,
-          signal: request.signal,
+          signal: abortController.signal,
           emit: send,
         });
 
         await writeAudit({
           userId: user.id,
-          action: "agent.generate",
+          action: `agent.${input.action}`,
           mode: input.mode,
           success: true,
           safetyFlags: [...safety.flags, ...result.safetyFlags],
           retrievalCount: result.sources.length,
           toolCalls: result.tools.length,
           inputChars:
-            input.painPoint.length + input.demand.length + input.idea.length,
+            input.painPoint.length +
+            input.demand.length +
+            input.idea.length +
+            input.instruction.length,
           latencyMs: result.latencyMs,
           totalTokens: result.usage.totalTokens,
           provider: result.provider,
           model: result.model,
           fallbacks: result.fallbacks,
           preview: maskPII(
-            [input.painPoint, input.demand, input.idea].filter(Boolean).join(" ")
+            [
+              input.painPoint,
+              input.demand,
+              input.idea,
+              input.instruction,
+            ]
+              .filter(Boolean)
+              .join(" ")
           ).slice(0, 120),
         });
       } catch (error) {
@@ -141,25 +180,49 @@ export async function POST(request: Request) {
 
         await writeAudit({
           userId: user.id,
-          action: "agent.generate",
+          action: `agent.${input.action}`,
           mode: input.mode,
           success: false,
           safetyFlags: safety.flags,
           inputChars:
-            input.painPoint.length + input.demand.length + input.idea.length,
+            input.painPoint.length +
+            input.demand.length +
+            input.idea.length +
+            input.instruction.length,
           latencyMs: Date.now() - startedAt,
           preview: maskPII(
-            [input.painPoint, input.demand, input.idea].filter(Boolean).join(" ")
+            [
+              input.painPoint,
+              input.demand,
+              input.idea,
+              input.instruction,
+            ]
+              .filter(Boolean)
+              .join(" ")
           ).slice(0, 120),
         });
       } finally {
         closed = true;
+        if (heartbeat) {
+          clearInterval(heartbeat);
+          heartbeat = null;
+        }
+        request.signal.removeEventListener("abort", onRequestAbort);
         try {
           controller.close();
         } catch {
           // 客户端已断开时忽略
         }
       }
+    },
+    cancel() {
+      closed = true;
+      if (heartbeat) {
+        clearInterval(heartbeat);
+        heartbeat = null;
+      }
+      request.signal.removeEventListener("abort", onRequestAbort);
+      abortController.abort();
     },
   });
 

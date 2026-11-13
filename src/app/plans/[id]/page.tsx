@@ -6,6 +6,7 @@ import { Markdown } from "@/components/markdown";
 import { PlanDiagram } from "@/components/plan-diagram";
 import { QualityReportView } from "@/components/quality-report";
 import { SourceList } from "@/components/source-list";
+import { ExportButtons } from "@/components/export-buttons";
 import type { QualityReport, SourceRef } from "@/lib/agent/types";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -50,6 +51,10 @@ export default async function PlanDetailPage({
   if (!plan) {
     notFound();
   }
+  // 仅方案作者可查看详情，避免通过 ID 越权读取他人工商业信息
+  if (plan.userId !== user.id) {
+    notFound();
+  }
 
   const isTool = plan.mode === "tool";
   const quality = parseJSON<QualityReport>(plan.quality);
@@ -67,29 +72,35 @@ export default async function PlanDetailPage({
           返回个人主页
         </Link>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-              isTool
-                ? "bg-gradient-to-br from-violet-500 to-purple-500"
-                : "bg-gradient-to-br from-fuchsia-500 to-pink-500"
-            } text-white`}
-          >
-            {isTool ? (
-              <Wrench className="h-6 w-6" />
-            ) : (
-              <Briefcase className="h-6 w-6" />
-            )}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                isTool
+                  ? "bg-gradient-to-br from-violet-500 to-purple-500"
+                  : "bg-gradient-to-br from-fuchsia-500 to-pink-500"
+              } text-white`}
+            >
+              {isTool ? (
+                <Wrench className="h-6 w-6" />
+              ) : (
+                <Briefcase className="h-6 w-6" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">
+                {isTool ? "工具创新方案" : "创业创新方案"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                作者：{plan.user.nickname || plan.user.username} · 更新于{" "}
+                {new Date(plan.updatedAt).toLocaleString("zh-CN")}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">
-              {isTool ? "工具创新方案" : "创业创新方案"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              作者：{plan.user.nickname || plan.user.username} · 更新于{" "}
-              {new Date(plan.updatedAt).toLocaleString("zh-CN")}
-            </p>
-          </div>
+          <ExportButtons
+            content={plan.content}
+            title={isTool ? "工具创新方案" : "创业创新方案"}
+          />
         </div>
 
         <div className="rounded-2xl border bg-white p-6">

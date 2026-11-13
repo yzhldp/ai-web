@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatZodError, planUpdateSchema } from "@/lib/validation";
 
 /**
  * GET /api/plans/[id] —— 获取方案详情（含评论列表）
@@ -31,6 +32,10 @@ export async function GET(
   if (!plan) {
     return NextResponse.json({ error: "方案不存在" }, { status: 404 });
   }
+  // 方案包含用户的商业/技术信息，仅作者本人可读取
+  if (plan.userId !== user.id) {
+    return NextResponse.json({ error: "无权限查看该方案" }, { status: 403 });
+  }
 
   return NextResponse.json({ plan });
 }
@@ -58,15 +63,34 @@ export async function PATCH(
     return NextResponse.json({ error: "无权限操作" }, { status: 403 });
   }
 
-  const { content } = await request.json();
-  if (!content) {
-    return NextResponse.json({ error: "方案内容不能为空" }, { status: 400 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
   }
+
+  const parsed = planUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+  }
+
+  const { content, analysis, sources, quality, diagram } = parsed.data;
 
   const updated = await prisma.projectPlan.update({
     where: { id: params.id },
-    data: { content },
-    select: { id: true, content: true, updatedAt: true },
+    data: {
+      content,
+      ...(analysis !== undefined ? { analysis } : {}),
+      ...(sources !== undefined ? { sources } : {}),
+      ...(quality !== undefined ? { quality } : {}),
+      ...(diagram !== undefined ? { diagram } : {}),
+    },
+    select: {
+      id: true,
+      content: true,
+      updatedAt: true,
+    },
   });
 
   return NextResponse.json({ plan: updated });

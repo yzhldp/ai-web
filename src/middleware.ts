@@ -20,10 +20,12 @@ export async function middleware(request: NextRequest) {
   let isAuthenticated = false;
   if (token) {
     try {
-      const secret = new TextEncoder().encode(
-        process.env.JWT_SECRET || "dev-secret-change-me"
-      );
-      await jwtVerify(token, secret);
+      const secretValue = process.env.JWT_SECRET;
+      // 密钥缺失时直接失败，避免用可猜的默认值校验 token
+      if (!secretValue) {
+        throw new Error("JWT_SECRET 未配置");
+      }
+      await jwtVerify(token, new TextEncoder().encode(secretValue));
       isAuthenticated = true;
     } catch {
       isAuthenticated = false;

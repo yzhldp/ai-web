@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { signToken, AUTH_COOKIE } from "@/lib/auth";
+import { isHttpsRequest } from "@/lib/rate-limit";
 
 /**
  * 登录接口
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
     response.cookies.set(AUTH_COOKIE, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttpsRequest(request),
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
       path: "/",

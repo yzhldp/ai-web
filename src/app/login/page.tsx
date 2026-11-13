@@ -68,8 +68,12 @@ export default function LoginPage() {
       toast.error("账号长度需在 1-20 位之间");
       return;
     }
-    if (regPassword.length < 6 || regPassword.length > 20) {
-      toast.error("密码长度需在 6-20 位之间");
+    if (regPassword.length < 8 || regPassword.length > 20) {
+      toast.error("密码长度需在 8-20 位之间");
+      return;
+    }
+    if (/^\d+$/.test(regPassword)) {
+      toast.error("密码不能为纯数字");
       return;
     }
     if (regPassword !== regConfirm) {
@@ -178,7 +182,7 @@ export default function LoginPage() {
                       id="login-password"
                       type="password"
                       className="pl-9"
-                      placeholder="请输入密码（6-20位）"
+                      placeholder="请输入密码"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                     />
@@ -214,7 +218,7 @@ export default function LoginPage() {
                       id="reg-password"
                       type="password"
                       className="pl-9"
-                      placeholder="请输入密码（6-20位）"
+                      placeholder="请输入密码（8-20位，非纯数字）"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                     />

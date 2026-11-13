@@ -13,7 +13,11 @@ const JWT_EXPIRES = "7d";
  * 通过 TextEncoder 将字符串密钥转换为 jose 所需的 Uint8Array
  */
 function getSecretKey() {
-  const secret = process.env.JWT_SECRET || "dev-secret-change-me";
+  const secret = process.env.JWT_SECRET;
+  // 不提供默认值：密钥缺失时直接失败，避免用可猜的密钥签发 token
+  if (!secret) {
+    throw new Error("JWT_SECRET 未配置，请通过环境变量注入强随机密钥");
+  }
   return new TextEncoder().encode(secret);
 }
 

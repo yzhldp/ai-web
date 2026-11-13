@@ -6,6 +6,12 @@ import { prisma } from "@/lib/db";
  * GET /api/comments?planId=xxx —— 获取指定方案的所有评论
  */
 export async function GET(request: Request) {
+  // 评论可能包含用户内容，要求登录后可见
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const planId = searchParams.get("planId");
 

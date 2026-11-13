@@ -8,9 +8,26 @@ import {
   buildIterateSystemPrompt,
   buildAssistantSystemPrompt,
 } from "@/lib/ai";
+import { rateLimit } from "@/lib/rate-limit";
 
 /** 允许流式输出最大时长（DeepSeek 推理可能较慢） */
 export const maxDuration = 60;
+
+/** 单次请求的输入上限，防止超长上下文放大成本 */
+const MAX_MESSAGES = 30;
+const MAX_MESSAGES_BYTES = 20000;
+const MAX_CONTEXT_CHARS = 20000;
+
+/** 单用户调用频次限制 */
+const LIMIT_PER_MINUTE = 10;
+const LIMIT_PER_DAY = 200;
+
+function tooManyRequests(retryAfter: number) {
+  return NextResponse.json(
+    { error: "请求过于频繁，请稍后再试" },
+    { status: 429, headers: { "Retry-After": String(retryAfter) } }
+  );
+}
 
 /**
  * AI 统一代理接口
@@ -28,12 +45,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
+  // 频次限制：防止单个账号刷爆 AI 额度
+  const perMinute = rateLimit(
+    `chat:minute:${user.id}`,
+    LIMIT_PER_MINUTE,
+    60 * 1000
+  );
+  if (!perMinute.ok) {
+    return tooManyRequests(perMinute.retryAfter);
+  }
+  const perDay = rateLimit(
+    `chat:day:${user.id}`,
+    LIMIT_PER_DAY,
+    24 * 60 * 60 * 1000
+  );
+  if (!perDay.ok) {
+    return tooManyRequests(perDay.retryAfter);
+  }
+
   const {
     messages = [],
     action = "assistant",
     mode = "tool",
     context = "",
   } = await request.json();
+
+  // 输入规模限制
+  if (!Array.isArray(messages) || messages.length > MAX_MESSAGES) {
+    return NextResponse.json(
+      { error: `消息条数不能超过 ${MAX_MESSAGES} 条` },
+      { status: 400 }
+    );
+  }
+  if (JSON.stringify(messages).length > MAX_MESSAGES_BYTES) {
+    return NextResponse.json(
+      { error: "输入内容过长，请精简后重试" },
+      { status: 413 }
+    );
+  }
+  if (typeof context === "string" && context.length > MAX_CONTEXT_CHARS) {
+    return NextResponse.json(
+      { error: "方案上下文过长，请精简后重试" },
+      { status: 413 }
+    );
+  }
 
   // 根据动作与模式构建系统提示词
   let system: string;

@@ -9,6 +9,12 @@ export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
+  // 方案可能包含用户输入的业务信息，未登录不可读取
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
   const plan = await prisma.projectPlan.findUnique({
     where: { id: params.id },
     include: {

@@ -1,6 +1,8 @@
 # ===== 构建阶段 =====
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9 --activate
+# Prisma 需要 OpenSSL 才能正确识别运行时平台并加载查询引擎
+RUN apk add --no-cache openssl \
+  && corepack enable && corepack prepare pnpm@9 --activate
 
 # 依赖安装阶段
 FROM base AS deps
@@ -29,7 +31,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.mjs ./
 COPY --from=builder /app/prisma ./prisma
 
+# 数据目录交给非 root 用户，配合 volume 持久化 SQLite
+RUN mkdir -p /app/data && chown -R node:node /app/data /app/.next
+USER node
+
 EXPOSE 3000
 
 # 启动时先同步数据库，再启动服务
-CMD ["sh", "-c", "npx prisma db push --skip-generate && pnpm start"]
+# 使用本地二进制启动，避免 node 用户下 corepack 联网拉取 pnpm
+CMD ["sh", "-c", "npx prisma db push --skip-generate && npx next start -p 3000"]

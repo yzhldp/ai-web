@@ -74,6 +74,24 @@ pnpm build
 pnpm start
 ```
 
+### Docker 部署
+
+```bash
+# 1. 构建镜像（密钥不打进镜像）
+docker build -t ai-web:prod .
+
+# 2. 准备环境变量文件（可复制 .env.example，数据库路径改为容器内路径）
+#    DATABASE_URL=file:/app/data/dev.db
+
+# 3. 启动容器，数据目录挂载到命名卷以便持久化
+docker run -d --name ai-web -p 3000:3000 \
+  --env-file .env.docker \
+  -v aiweb-data:/app/data \
+  ai-web:prod
+```
+
+容器以非 root 用户运行，启动时自动执行 `prisma db push` 同步表结构。
+
 ---
 
 ## 🔑 环境变量说明

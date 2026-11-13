@@ -4,6 +4,10 @@
 
 「创意雏形合成助手」是一款基于 **Next.js 14 App Router** 全栈开发的 AI Web 应用（传智杯 AI Web 参赛项目）。用户往往只有零散的痛点、需求与奇思妙想，却没有成型的项目；本产品通过 **多阶段 Agent 工作流 + RAG 检索增强 + 工具调用 + 多模态理解**，一键生成结构化、有依据、可质检的项目雏形规划。
 
+- 仓库地址：<https://github.com/yzhldp/ai-web>
+- 技术栈：Next.js 14 + TypeScript + Prisma + Vercel AI SDK + DeepSeek
+- 部署方式：Docker Compose 一键启动
+
 ---
 
 ## ✨ 核心能力
@@ -76,6 +80,24 @@
 | 部署 | Docker + Docker Compose |
 
 AI 技术细节见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md)，评审逐项对标见 [docs/10-评审对标说明.md](docs/10-评审对标说明.md)。
+
+### 依赖清单
+
+| 类别 | 主要依赖 | 版本 |
+| --- | --- | --- |
+| 运行时 | Node.js | >= 18.17 |
+| 包管理器 | pnpm | 10.x（随 `pnpm-lock.yaml` 锁定） |
+| 框架 | next / react / react-dom | 14.2.x / 18.3.x |
+| 语言 | typescript | 5.x |
+| 数据库 | @prisma/client / prisma | 5.22.x |
+| AI | ai / @ai-sdk/openai | 4.1.x / 1.1.x |
+| 结构化校验 | zod | 3.25.x |
+| 检索与图表 | mermaid | 12.x |
+| 样式与组件 | tailwindcss / shadcn-ui / lucide-react | 3.4.x / — / 0.454.x |
+| 认证与安全 | bcryptjs / jose | 2.4.x / 5.9.x |
+| 动画 | framer-motion | 11.x |
+
+完整依赖与精确版本见 `package.json` 与 `pnpm-lock.yaml`。
 
 ---
 
@@ -276,12 +298,14 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 
 ## 👥 团队信息
 
-| 角色 | 姓名（占位） |
+| 角色 | 姓名 |
 | --- | --- |
-| 队长 / 全栈开发 | 待填写 |
-| 前端开发 | 待填写 |
-| 后端开发 | 待填写 |
-| 产品 / 设计 | 待填写 |
+| 队长 / 全栈开发 | yzhldp |
+| 前端开发 | 待补充 |
+| 后端开发 | 待补充 |
+| 产品 / 设计 | 待补充 |
+
+> 仓库地址：<https://github.com/yzhldp/ai-web>（Public，可直接评审访问）。
 
 ---
 

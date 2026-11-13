@@ -1,7 +1,8 @@
 # ===== 构建阶段 =====
 FROM node:20-alpine AS base
 # Prisma 需要 OpenSSL 才能正确识别运行时平台并加载查询引擎
-RUN apk add --no-cache openssl \
+# su-exec 用于启动时修正数据目录权限后降权运行
+RUN apk add --no-cache openssl su-exec \
   && corepack enable && corepack prepare pnpm@9 --activate
 
 # 依赖安装阶段
@@ -33,10 +34,10 @@ COPY --from=builder /app/prisma ./prisma
 
 # 数据目录交给非 root 用户，配合 volume 持久化 SQLite
 RUN mkdir -p /app/data && chown -R node:node /app/data /app/.next
-USER node
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 755 /app/docker-entrypoint.sh
 
 EXPOSE 3000
 
-# 启动时先同步数据库，再启动服务
-# 使用本地二进制启动，避免 node 用户下 corepack 联网拉取 pnpm
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npx next start -p 3000"]
+# 启动脚本会先修正挂载卷权限，再降权到 node 用户执行数据库同步与服务启动
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

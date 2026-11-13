@@ -100,6 +100,12 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [usage, setUsage] = useState<AgentUsage | null>(null);
   const [latencyMs, setLatencyMs] = useState(0);
+  const [providerInfo, setProviderInfo] = useState<{
+    id: string;
+    label: string;
+    model: string;
+    fallbacks: number;
+  } | null>(null);
 
   const [tab, setTab] = useState<TabKey>("plan");
   const [generating, setGenerating] = useState(false);
@@ -216,6 +222,14 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
         case "token":
           appendToken(event.delta);
           break;
+        case "provider":
+          setProviderInfo({
+            id: event.provider,
+            label: event.label,
+            model: event.model,
+            fallbacks: event.fallbacks,
+          });
+          break;
         case "quality":
           setQuality(event.quality);
           break;
@@ -241,6 +255,13 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
           setUsage(event.data.usage);
           setLatencyMs(event.data.latencyMs);
           setWarnings(event.data.warnings);
+          setProviderInfo((prev) => ({
+            id: event.data.provider || prev?.id || "",
+            label:
+              prev?.id === event.data.provider ? prev.label : event.data.provider,
+            model: event.data.model || prev?.model || "",
+            fallbacks: event.data.fallbacks,
+          }));
           setStages((prev) =>
             prev.map((item) =>
               item.status === "running" || item.status === "pending"
@@ -279,6 +300,7 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
     setWarnings([]);
     setUsage(null);
     setLatencyMs(0);
+    setProviderInfo(null);
     setTab("plan");
     fullContentRef.current = "";
     toolStartedAtRef.current = {};
@@ -645,11 +667,28 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
               <h2 className="text-xl font-bold">Agent 工作台</h2>
               <p className="text-sm text-muted-foreground">{config.desc}</p>
             </div>
-            {hasResult && (
-              <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[10px] text-emerald-700">
-                已完成
-              </span>
-            )}
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              {hasResult && (
+                <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] text-emerald-700">
+                  已完成
+                </span>
+              )}
+              {providerInfo && (
+                <span
+                  className={`max-w-[180px] truncate rounded-full px-2 py-1 text-[10px] ${
+                    providerInfo.fallbacks > 0
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-sky-50 text-sky-700"
+                  }`}
+                  title={`${providerInfo.label} · ${providerInfo.model}`}
+                >
+                  {providerInfo.label} · {providerInfo.model}
+                  {providerInfo.fallbacks > 0
+                    ? ` · 切换${providerInfo.fallbacks}次`
+                    : ""}
+                </span>
+              )}
+            </div>
           </div>
 
           <AgentTimeline stages={stages} />

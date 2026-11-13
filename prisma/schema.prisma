@@ -71,6 +71,9 @@ model AiAuditLog {
   inputChars     Int      @default(0)
   latencyMs      Int      @default(0)
   totalTokens    Int      @default(0)
+  provider       String? // 最终使用的模型供应商
+  model          String? // 具体模型名称
+  fallbacks      Int      @default(0) // 自动切换供应商次数
   preview        String? // 脱敏后的输入摘要
   createdAt      DateTime @default(now())
 

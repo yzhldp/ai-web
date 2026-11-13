@@ -2,12 +2,13 @@ import { streamText, convertToCoreMessages } from "ai";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  getDeepSeekModel,
   buildToolSystemPrompt,
   buildBusinessSystemPrompt,
   buildIterateSystemPrompt,
   buildAssistantSystemPrompt,
 } from "@/lib/ai";
+import { createProviderModel, getPrimaryProvider } from "@/lib/ai/providers";
+import { streamTextWithFailover } from "@/lib/ai/failover";
 import { rateLimit } from "@/lib/rate-limit";
 import { inspectInput, SAFETY_SYSTEM_SUFFIX, maskPII } from "@/lib/safety";
 import { writeAudit } from "@/lib/audit";
@@ -131,28 +132,96 @@ export async function POST(request: Request) {
   }
 
   // 流式生成
-  const result = streamText({
-    model: getDeepSeekModel(),
-    system,
-    messages: convertToCoreMessages(messages),
-    onFinish: ({ usage }) => {
-      void writeAudit({
-        userId: user.id,
-        action: action === "assistant" ? "assistant" : `chat.${action}`,
-        mode,
-        success: true,
-        safetyFlags: safety.flags,
-        inputChars: userText.length,
-        totalTokens: usage.totalTokens,
-        preview: maskPII(userText).slice(0, 120),
-      });
+  const primary = getPrimaryProvider();
+  if (!primary) {
+    return NextResponse.json(
+      { error: "未配置可用的模型供应商，请设置 DEEPSEEK_API_KEY 或 DASHSCOPE_API_KEY 等环境变量" },
+      { status: 503 }
+    );
+  }
+
+  // 悬浮助手使用 useChat 的数据流协议，走主供应商
+  if (action === "assistant") {
+    const result = streamText({
+      model: createProviderModel(primary),
+      system,
+      messages: convertToCoreMessages(messages),
+      onFinish: ({ usage }) => {
+        void writeAudit({
+          userId: user.id,
+          action: "assistant",
+          mode,
+          success: true,
+          safetyFlags: safety.flags,
+          inputChars: userText.length,
+          totalTokens: usage.totalTokens,
+          provider: primary.id,
+          model: primary.model,
+          preview: maskPII(userText).slice(0, 120),
+        });
+      },
+    });
+    return result.toDataStreamResponse();
+  }
+
+  // 方案生成 / 迭代：纯文本流 + 自动故障转移
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        const result = await streamTextWithFailover({
+          system,
+          messages: convertToCoreMessages(messages),
+          temperature: 0.7,
+          timeoutMs: 120000,
+          signal: request.signal,
+          onToken: (delta) => controller.enqueue(encoder.encode(delta)),
+        });
+
+        await writeAudit({
+          userId: user.id,
+          action: `chat.${action}`,
+          mode,
+          success: true,
+          safetyFlags: safety.flags,
+          inputChars: userText.length,
+          totalTokens: result.usage.totalTokens,
+          provider: result.provider.id,
+          model: result.provider.model,
+          fallbacks: result.attempts.filter((item) => !item.ok).length,
+          preview: maskPII(userText).slice(0, 120),
+        });
+      } catch (error) {
+        console.error("[chat] 生成失败", error);
+        await writeAudit({
+          userId: user.id,
+          action: `chat.${action}`,
+          mode,
+          success: false,
+          safetyFlags: safety.flags,
+          inputChars: userText.length,
+          preview: maskPII(userText).slice(0, 120),
+        });
+        try {
+          controller.error(error);
+        } catch {
+          // 客户端可能已断开
+        }
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          // 已关闭时忽略
+        }
+      }
     },
   });
 
-  // 悬浮助手使用 useChat 客户端，需返回 data stream 协议；
-  // 方案生成/迭代使用手动流式读取，返回纯文本流
-  if (action === "assistant") {
-    return result.toDataStreamResponse();
-  }
-  return result.toTextStreamResponse();
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

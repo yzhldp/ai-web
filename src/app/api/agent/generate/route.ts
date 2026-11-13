@@ -106,6 +106,7 @@ export async function POST(request: Request) {
           idea: input.idea,
           deep: input.deep,
           imageDataUrl: input.image ?? null,
+          signal: request.signal,
           emit: send,
         });
 
@@ -121,6 +122,9 @@ export async function POST(request: Request) {
             input.painPoint.length + input.demand.length + input.idea.length,
           latencyMs: result.latencyMs,
           totalTokens: result.usage.totalTokens,
+          provider: result.provider,
+          model: result.model,
+          fallbacks: result.fallbacks,
           preview: maskPII(
             [input.painPoint, input.demand, input.idea].filter(Boolean).join(" ")
           ).slice(0, 120),
@@ -128,10 +132,10 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error("[agent] 生成失败", error);
         const message =
-          error instanceof Error && /DEEPSEEK_API_KEY|API key/i.test(error.message)
-            ? "AI 服务密钥未配置，请在环境变量中设置 DEEPSEEK_API_KEY"
-            : error instanceof Error && /abort/i.test(error.message)
-              ? "AI 请求超时，请稍后重试"
+          error instanceof Error && /未配置任何|API key/i.test(error.message)
+            ? "未配置可用的模型供应商，请设置 DEEPSEEK_API_KEY 或 DASHSCOPE_API_KEY 等环境变量"
+            : error instanceof Error && /abort|cancel|取消/i.test(error.message)
+              ? "生成已取消"
               : "AI 生成失败，请稍后重试";
         send({ type: "error", message });
 

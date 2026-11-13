@@ -17,6 +17,9 @@ export interface AuditInput {
   inputChars?: number;
   latencyMs?: number;
   totalTokens?: number;
+  provider?: string | null;
+  model?: string | null;
+  fallbacks?: number;
   /** 已脱敏的输入摘要 */
   preview?: string | null;
 }
@@ -35,6 +38,9 @@ export async function writeAudit(input: AuditInput): Promise<void> {
         inputChars: input.inputChars ?? 0,
         latencyMs: input.latencyMs ?? 0,
         totalTokens: input.totalTokens ?? 0,
+        provider: input.provider ?? null,
+        model: input.model ?? null,
+        fallbacks: input.fallbacks ?? 0,
         preview: input.preview ? input.preview.slice(0, 120) : null,
       },
     });
@@ -58,6 +64,9 @@ export async function listAuditLogs(userId: string, limit = 20) {
       toolCalls: true,
       latencyMs: true,
       totalTokens: true,
+      provider: true,
+      model: true,
+      fallbacks: true,
       createdAt: true,
     },
   });

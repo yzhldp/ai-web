@@ -6,8 +6,16 @@
  * 任一阶段失败均有降级路径，只有「方案生成」失败才会中断。
  */
 
-import { generateText, streamText } from "ai";
-import { getDeepSeekModel, getVisionModel, hasVisionModel } from "@/lib/ai";
+import { generateText } from "ai";
+import { getVisionModel, hasVisionModel } from "@/lib/ai";
+import {
+  generateJSONWithFailover,
+  generateTextWithFailover,
+  streamTextWithFailover,
+  timeoutSignal,
+  type ProviderAttempt,
+} from "@/lib/ai/failover";
+import { listProviders } from "@/lib/ai/providers";
 import { searchKnowledge, tokenize } from "@/lib/rag";
 import { sanitizeOutput } from "@/lib/safety";
 import {
@@ -50,6 +58,8 @@ export interface RunAgentInput {
   idea: string;
   deep: boolean;
   imageDataUrl?: string | null;
+  /** 客户端断连信号，用于中止模型调用 */
+  signal?: AbortSignal;
   emit: (event: AgentEvent) => void;
 }
 
@@ -76,23 +86,6 @@ function addUsage(target: AgentUsage, usage?: Partial<AgentUsage> | null) {
   target.promptTokens += promptTokens;
   target.completionTokens += completionTokens;
   target.totalTokens += totalTokens > 0 ? totalTokens : promptTokens + completionTokens;
-}
-
-/** 从模型输出中提取 JSON（兼容代码围栏与前后解释文字） */
-function extractJSON(text: string): unknown | null {
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end <= start) return null;
-  try {
-    return JSON.parse(cleaned.slice(start, end + 1));
-  } catch {
-    return null;
-  }
 }
 
 /** 无模型可用时的启发式需求解析，保证流程可继续 */
@@ -159,12 +152,12 @@ function summarizeToolResult(name: string, result: unknown): string {
 }
 
 /** 多模态参考图理解 */
-async function analyzeImage(imageDataUrl: string): Promise<string> {
+async function analyzeImage(imageDataUrl: string, signal?: AbortSignal): Promise<string> {
   const { text } = await generateText({
     model: getVisionModel(),
     temperature: 0.1,
     maxRetries: 1,
-    abortSignal: AbortSignal.timeout(30000),
+    abortSignal: timeoutSignal(30000, signal),
     messages: [
       {
         role: "user",
@@ -185,28 +178,25 @@ async function analyzeRequirements(
   input: RunAgentInput,
   imageInsight: string | null,
   warnings: string[]
-): Promise<{ analysis: PlanAnalysis; usage: AgentUsage }> {
+): Promise<{ analysis: PlanAnalysis; usage: AgentUsage; attempts: ProviderAttempt[] }> {
   const usage = emptyUsage();
   try {
-    // 使用 JSON 提示词 + Zod 校验，兼容不支持 JSON Schema / 工具模式的模型
-    const { text, usage: modelUsage } = await generateText({
-      model: getDeepSeekModel(),
+    // JSON 提示词 + Zod 校验；任一供应商失败或结构不合法都会自动切换
+    const result = await generateJSONWithFailover({
+      schema: analysisSchema,
       temperature: 0.2,
-      maxRetries: 1,
-      abortSignal: AbortSignal.timeout(45000),
+      timeoutMs: 45000,
+      signal: input.signal,
       prompt: `${buildAnalysisPrompt({ ...input, imageInsight })}
 
 只输出一个 JSON 对象，不要输出解释、Markdown 代码围栏或其他文字。JSON 字段必须包含：summary、domain、targetUsers、painPoints、keyFeatures、constraints、keywords。`,
     });
-    addUsage(usage, modelUsage);
-
-    const parsed = analysisSchema.safeParse(extractJSON(text));
-    if (!parsed.success) throw new Error("需求解析结果不符合 Schema");
-    return { analysis: parsed.data, usage };
+    addUsage(usage, result.usage);
+    return { analysis: result.value, usage, attempts: result.attempts };
   } catch (error) {
     warnings.push("需求解析模型调用失败，已使用本地启发式解析。");
     console.warn("[agent] analysis fallback:", error);
-    return { analysis: heuristicAnalysis(input), usage };
+    return { analysis: heuristicAnalysis(input), usage, attempts: [] };
   }
 }
 
@@ -216,28 +206,30 @@ async function runToolStage(
   sources: SourceRef[],
   emit: (event: AgentEvent) => void,
   warnings: string[]
-): Promise<{ trace: ToolTrace[]; findings: string; usage: AgentUsage }> {
+): Promise<{ trace: ToolTrace[]; findings: string; usage: AgentUsage; attempts: ProviderAttempt[] }> {
   const trace: ToolTrace[] = [];
   let findings = "";
   const usage = emptyUsage();
+  let attempts: ProviderAttempt[] = [];
 
   try {
     const started = Date.now();
-    const result = await generateText({
-      model: getDeepSeekModel(),
+    const result = await generateTextWithFailover({
       system: buildToolSystemPrompt(),
       prompt: buildToolUserPrompt(analysis, input.mode, sources),
       tools: planningTools,
       maxSteps: 3,
       temperature: 0.2,
-      maxRetries: 1,
-      abortSignal: AbortSignal.timeout(60000),
+      timeoutMs: 60000,
+      requireToolCalls: true,
+      signal: input.signal,
     });
 
     addUsage(usage, result.usage);
-    findings = result.text.trim();
+    attempts = result.attempts;
+    findings = result.value.trim();
 
-    for (const step of result.steps) {
+    for (const step of result.steps ?? []) {
       for (const call of step.toolCalls ?? []) {
         emit({
           type: "tool",
@@ -320,16 +312,18 @@ async function runToolStage(
       .slice(0, 1200);
   }
 
-  return { trace, findings, usage };
+  return { trace, findings, usage, attempts };
 }
 
 /** 执行完整 Agent 工作流 */
 export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
   const { mode, emit } = input;
 
-  // 缺少密钥时立即失败，避免请求长时间挂起
-  if (!process.env.DEEPSEEK_API_KEY) {
-    throw new Error("DEEPSEEK_API_KEY 未配置，无法调用大模型");
+  // 无任何供应商配置时立即失败，避免请求长时间挂起
+  if (!listProviders().length) {
+    throw new Error(
+      "未配置任何模型供应商，请在环境变量中设置 DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / MOONSHOT_API_KEY / OPENAI_API_KEY 之一"
+    );
   }
 
   const startedAt = Date.now();
@@ -337,6 +331,12 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
   const safetyFlags: string[] = [];
   const usage = emptyUsage();
   const deep = input.deep;
+  let fallbackCount = 0;
+  let providerInfo: { id: string; label: string; model: string } | null = null;
+
+  const countFailures = (attempts: ProviderAttempt[]) => {
+    fallbackCount += attempts.filter((item) => !item.ok).length;
+  };
 
   const stageStart = (stage: AgentStage, detail?: string) =>
     emit({ type: "stage", stage, status: "start", label: STAGE_LABELS[stage], detail });
@@ -357,7 +357,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
       stageStart("analyze", "正在识别参考图并解析需求…");
       const imageStart = Date.now();
       try {
-        imageInsight = await analyzeImage(input.imageDataUrl);
+        imageInsight = await analyzeImage(input.imageDataUrl, input.signal);
         emit({ type: "stage", stage: "analyze", status: "start", label: "参考图理解", detail: imageInsight.slice(0, 120) });
       } catch (error) {
         warnings.push("参考图识别失败，已忽略图片继续生成。");
@@ -383,6 +383,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
     const analyzed = await analyzeRequirements(input, imageInsight, warnings);
     analysis = analyzed.analysis;
     addUsage(usage, analyzed.usage);
+    countFailures(analyzed.attempts);
   } else {
     analysis = heuristicAnalysis(input);
   }
@@ -425,6 +426,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
     tools = result.trace;
     toolFindings = result.findings;
     addUsage(usage, result.usage);
+    countFailures(result.attempts);
     stageEnd("tools", toolsStart, `完成 ${tools.length} 个工具调用`);
   } else {
     emit({ type: "stage", stage: "tools", status: "skip", label: STAGE_LABELS.tools, detail: "快速模式跳过工具推理" });
@@ -443,21 +445,37 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
   });
 
   let fullContent = "";
-  const result = streamText({
-    model: getDeepSeekModel(),
+  const streamResult = await streamTextWithFailover({
     system,
     prompt,
     temperature: mode === "tool" ? 0.65 : 0.7,
-    maxRetries: 1,
-    abortSignal: AbortSignal.timeout(150000),
+    timeoutMs: 150000,
+    signal: input.signal,
+    onToken: (delta) => emit({ type: "token", delta }),
+    onProvider: (provider, failures) => {
+      providerInfo = { id: provider.id, label: provider.label, model: provider.model };
+      emit({
+        type: "provider",
+        provider: provider.id,
+        label: provider.label,
+        model: provider.model,
+        fallbacks: fallbackCount + failures,
+      });
+    },
+    onFailure: (attempt) => {
+      console.warn(`[agent] 供应商 ${attempt.label} 调用失败，尝试切换：${attempt.error}`);
+    },
   });
 
-  for await (const delta of result.textStream) {
-    fullContent += delta;
-    emit({ type: "token", delta });
-  }
+  addUsage(usage, streamResult.usage);
+  countFailures(streamResult.attempts);
+  fullContent = streamResult.value;
+  providerInfo = {
+    id: streamResult.provider.id,
+    label: streamResult.provider.label,
+    model: streamResult.provider.model,
+  };
 
-  addUsage(usage, await result.usage);
   const sanitized = sanitizeOutput(fullContent, { requireDisclaimer: true });
   safetyFlags.push(...sanitized.flags);
   fullContent = sanitized.content;
@@ -472,22 +490,21 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
   let quality: QualityReport | null = null;
   if (deep) {
     try {
-      const { text, usage: modelUsage } = await generateText({
-        model: getDeepSeekModel(),
+      const result = await generateJSONWithFailover({
+        schema: qualitySchema,
         temperature: 0.2,
-        maxRetries: 1,
-        abortSignal: AbortSignal.timeout(60000),
+        timeoutMs: 60000,
+        signal: input.signal,
         prompt: `${buildQualityPrompt(fullContent, analysis)}
 
 只输出一个 JSON 对象，不要输出解释或 Markdown 代码围栏。JSON 字段必须包含：dimensions（数组，元素含 name、score、comment）、suggestions（字符串数组）、mermaid（字符串）。`,
       });
-      addUsage(usage, modelUsage);
+      addUsage(usage, result.usage);
+      countFailures(result.attempts);
 
-      const parsed = qualitySchema.safeParse(extractJSON(text));
-      if (!parsed.success) throw new Error("质检结果不符合 Schema");
       quality = {
-        ...parsed.data,
-        mermaid: normalizeMermaid(parsed.data.mermaid, analysis),
+        ...result.value,
+        mermaid: normalizeMermaid(result.value.mermaid, analysis),
       };
     } catch (error) {
       warnings.push("质检模型调用失败，已使用本地启发式评分。");
@@ -505,6 +522,22 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
     `综合 ${Math.round(quality.dimensions.reduce((sum, item) => sum + item.score, 0) / quality.dimensions.length)} 分`
   );
 
+  // 汇总本次运行的供应商与切换次数
+  if (providerInfo) {
+    emit({
+      type: "provider",
+      provider: providerInfo.id,
+      label: providerInfo.label,
+      model: providerInfo.model,
+      fallbacks: fallbackCount,
+    });
+    if (fallbackCount > 0) {
+      warnings.push(
+        `主供应商调用异常，已自动切换 ${fallbackCount} 次，最终使用 ${providerInfo.label}（${providerInfo.model}）。`
+      );
+    }
+  }
+
   for (const warning of warnings) emit({ type: "warning", message: warning });
 
   const publicResult = {
@@ -519,6 +552,9 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
     usage,
     latencyMs: Date.now() - startedAt,
     warnings,
+    provider: providerInfo?.id ?? "",
+    model: providerInfo?.model ?? "",
+    fallbacks: fallbackCount,
   };
 
   emit({ type: "done", data: publicResult });

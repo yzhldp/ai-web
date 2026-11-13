@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getKnowledgeStats } from "@/lib/rag";
+import { describeProviders } from "@/lib/ai/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`;
     const knowledge = getKnowledgeStats();
+    const providers = describeProviders();
 
     return NextResponse.json({
       status: "ok",
@@ -23,11 +25,15 @@ export async function GET() {
       uptimeSeconds: Math.round(process.uptime()),
       checkLatencyMs: Date.now() - startedAt,
       ai: {
-        textModelConfigured: Boolean(process.env.DEEPSEEK_API_KEY),
+        textModelConfigured: providers.configuredCount > 0,
         visionModelConfigured: Boolean(
           process.env.VISION_MODEL &&
             (process.env.VISION_API_KEY || process.env.DEEPSEEK_API_KEY)
         ),
+        primaryProvider: providers.primaryProvider,
+        fallbackEnabled: providers.fallbackEnabled,
+        configuredCount: providers.configuredCount,
+        providers: providers.providers,
       },
       timestamp: new Date().toISOString(),
     });

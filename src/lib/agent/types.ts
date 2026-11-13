@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ProviderAttempt } from "@/lib/ai/failover";
 
 /** 需求解析阶段的结构化输出 */
 export const analysisSchema = z.object({
@@ -88,6 +89,11 @@ export interface AgentResult {
   latencyMs: number;
   safetyFlags: string[];
   warnings: string[];
+  /** 最终成功调用的供应商 */
+  provider: string;
+  model: string;
+  /** 本次运行中自动切换供应商的次数 */
+  fallbacks: number;
 }
 
 /** 流式事件协议（SSE 的 data 字段） */
@@ -104,6 +110,7 @@ export type AgentEvent =
   | { type: "sources"; sources: SourceRef[] }
   | { type: "tool"; name: string; status: "call" | "result"; args?: unknown; summary?: string }
   | { type: "token"; delta: string }
+  | { type: "provider"; provider: string; label: string; model: string; fallbacks: number }
   | { type: "quality"; quality: QualityReport }
   | { type: "diagram"; mermaid: string }
   | { type: "warning"; message: string }
@@ -122,4 +129,8 @@ export interface AgentPublicResult {
   usage: AgentUsage;
   latencyMs: number;
   warnings: string[];
+  provider: string;
+  model: string;
+  fallbacks: number;
+  attempts?: ProviderAttempt[];
 }

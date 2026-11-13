@@ -38,6 +38,13 @@
 
 工具参数由 Zod 约束；模型不支持工具调用时自动切换确定性规则引擎。
 
+### 多供应商路由与自动故障转移
+
+- 支持 DeepSeek / 通义千问 / Moonshot / OpenAI / Ollama 任意 OpenAI 兼容服务；
+- 通过环境变量启用供应商，按优先级自动切换；非流式调用遇到超时、报错或非法 JSON 都会切换下一家；
+- 流式生成在首 Token 之前失败可无缝切换，开始输出后不切换，避免内容重复；
+- 工作台实时显示本次使用的供应商、模型与切换次数，个人主页可运行真实模型质量评测（结构化 JSON / Function Calling / 引用标记）。
+
 ### 多模态能力
 
 - **图片输入**：上传界面截图、手绘草图、白板照片，由视觉模型理解并注入需求；
@@ -72,7 +79,7 @@
 | 数据库 | SQLite（单文件，零额外服务） |
 | ORM | Prisma |
 | 用户认证 | bcryptjs + jose JWT + HttpOnly Cookie |
-| AI 能力 | Vercel AI SDK + DeepSeek（OpenAI 兼容），SSE 流式 |
+| AI 能力 | Vercel AI SDK + 多供应商（DeepSeek / Qwen / Moonshot / OpenAI / Ollama），自动故障转移 |
 | 结构化输出 | JSON 提示词 + Zod Schema 校验 |
 | 检索 | 自研 BM25 + 稀疏向量混合检索 |
 | 图表 | Mermaid（按需动态加载） |
@@ -184,15 +191,19 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | 变量名 | 必填 | 说明 | 示例 |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | 是 | SQLite 文件路径（Docker 内为 `/app/data/prod.db`） | `file:./dev.db` |
-| `DEEPSEEK_API_KEY` | 是 | 文本模型 API 密钥 | 在 platform.deepseek.com 申请 |
-| `DEEPSEEK_BASE_URL` | 否 | OpenAI 兼容地址 | `https://api.deepseek.com` |
-| `DEEPSEEK_MODEL` | 否 | 文本模型 | `deepseek-chat` |
+| `DEEPSEEK_API_KEY` | 否* | DeepSeek 密钥（默认主供应商） | 在 platform.deepseek.com 申请 |
+| `DASHSCOPE_API_KEY` | 否* | 通义千问密钥 | 阿里云 DashScope |
+| `MOONSHOT_API_KEY` | 否* | Moonshot 密钥 | — |
+| `OPENAI_API_KEY` | 否* | OpenAI 密钥 | — |
+| `OLLAMA_BASE_URL` | 否* | 本地 Ollama 地址，填写即启用 | `http://host.docker.internal:11434/v1` |
+| `AI_PROVIDER_ORDER` | 否 | 供应商优先级与白名单，逗号分隔 | `deepseek,qwen,openai` |
+| `AI_DISABLE_FALLBACK` | 否 | 关闭自动切换，仅用第一个供应商 | `true` / `false` |
 | `JWT_SECRET` | 是 | JWT 签名密钥（生产务必修改） | `openssl rand -base64 48` |
 | `VISION_MODEL` | 否 | 视觉模型名称，用于参考图理解 | `qwen-vl-max` / `gpt-4o-mini` |
 | `VISION_BASE_URL` | 否 | 视觉模型 OpenAI 兼容地址 | — |
-| `VISION_API_KEY` | 否 | 视觉模型密钥（默认复用 DEEPSEEK_API_KEY） | — |
+| `VISION_API_KEY` | 否 | 视觉模型密钥（默认复用供应商密钥） | — |
 
-> 未配置视觉模型时，图片输入自动降级，文本生成与架构图不受影响。
+> \* 至少配置一个文本模型供应商。未配置视觉模型时，图片输入自动降级，文本生成与架构图不受影响。
 
 ---
 
@@ -205,6 +216,8 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | POST | `/api/knowledge` | 混合检索调试（返回双通道得分） |
 | GET | `/api/knowledge` | 知识库统计信息 |
 | GET | `/api/agent/audit` | AI 调用审计与用量统计 |
+| GET | `/api/agent/models` | 多供应商路由状态（脱敏） |
+| POST | `/api/agent/models/evaluate` | 运行模型质量评测（结构化 / 工具 / 引用） |
 | GET | `/api/health` | 健康检查（数据库、知识库、模型配置） |
 | GET/POST | `/api/plans` | 方案列表 / 保存 |
 | PATCH/DELETE | `/api/plans/[id]` | 方案迭代 / 删除 |

@@ -106,7 +106,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row">
       {/* 左侧品牌展示区（窄屏在上，大屏在左） */}
-      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-b from-sky-100 via-blue-50 to-indigo-100 px-6 py-8 lg:flex-1 lg:px-10 lg:py-12">
+      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-b from-sky-100 via-blue-50 to-cyan-100 px-6 py-8 lg:flex-1 lg:px-10 lg:py-12">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -77,8 +77,8 @@ export default async function PlanDetailPage({
             <div
               className={`flex h-12 w-12 items-center justify-center rounded-xl ${
                 isTool
-                  ? "bg-gradient-to-br from-violet-500 to-purple-500"
-                  : "bg-gradient-to-br from-fuchsia-500 to-pink-500"
+                  ? "bg-gradient-to-br from-blue-600 to-cyan-500"
+                  : "bg-gradient-to-br from-sky-500 to-blue-600"
               } text-white`}
             >
               {isTool ? (

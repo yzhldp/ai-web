@@ -167,8 +167,8 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
               plan.mode === "tool"
-                ? "bg-violet-100 text-violet-700"
-                : "bg-fuchsia-100 text-fuchsia-700"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-sky-100 text-sky-700"
             }`}
           >
             {plan.mode === "tool" ? (
@@ -242,7 +242,7 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
       {/* 用户信息区 */}
       <div className="mb-8 flex flex-col items-center rounded-2xl border bg-white/70 p-8 backdrop-blur">
         <Avatar className="h-20 w-20 text-3xl">
-          <AvatarFallback className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-3xl font-bold">
+          <AvatarFallback className="bg-gradient-to-br from-blue-600 to-cyan-500 text-3xl font-bold">
             {(user.nickname || user.username).charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>

@@ -59,7 +59,7 @@ export function FloatingAssistant() {
         aria-label={open ? "关闭创意助手" : "打开创意助手"}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/40"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/40"
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </motion.button>
@@ -75,7 +75,7 @@ export function FloatingAssistant() {
             className="fixed bottom-24 right-6 z-50 flex h-[480px] w-[360px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl"
           >
             {/* 头部 */}
-            <div className="flex items-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 text-white">
+            <div className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-white">
               <Sparkles className="h-5 w-5" />
               <div>
                 <p className="text-sm font-semibold">创意助手</p>

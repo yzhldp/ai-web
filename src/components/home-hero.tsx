@@ -17,21 +17,21 @@ const FEATURES = [
     icon: Wrench,
     title: "工具创新",
     desc: "输入零散痛点，AI 生成软件开发规划：模块划分、技术选型、开发排期一应俱全。",
-    color: "from-violet-500 to-purple-500",
+    color: "from-blue-500 to-cyan-500",
     href: "/tool",
   },
   {
     icon: Briefcase,
     title: "创业创新",
     desc: "从创意到商业模式，AI 帮你梳理项目定位、目标人群与落地计划。",
-    color: "from-fuchsia-500 to-pink-500",
+    color: "from-sky-500 to-blue-600",
     href: "/business",
   },
   {
     icon: RefreshCw,
     title: "方案迭代",
     desc: "对已有方案追加需求，AI 持续优化补全，让创意不断进化。",
-    color: "from-sky-500 to-blue-500",
+    color: "from-cyan-500 to-sky-500",
     href: "/tool",
   },
   {
@@ -51,9 +51,9 @@ export function HomeHero() {
   return (
     <div className="relative overflow-hidden">
       {/* 渐变背景装饰 */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-violet-100 via-background to-fuchsia-100" />
-      <div className="pointer-events-none absolute -left-24 -top-24 -z-10 h-96 w-96 rounded-full bg-violet-300/40 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 top-40 -z-10 h-96 w-96 rounded-full bg-fuchsia-300/40 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-blue-50 via-background to-cyan-50" />
+      <div className="pointer-events-none absolute -left-24 -top-24 -z-10 h-96 w-96 rounded-full bg-blue-300/40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 top-40 -z-10 h-96 w-96 rounded-full bg-cyan-300/40 blur-3xl" />
 
       <div className="mx-auto max-w-6xl px-4 py-16 md:py-24">
         {/* 主标题区 */}
@@ -68,7 +68,7 @@ export function HomeHero() {
             让每一个灵感都有机会变成现实
           </div>
           <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">
-            <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 bg-clip-text text-transparent">
               零散灵感，一键成雏形
             </span>
           </h1>
@@ -79,7 +79,7 @@ export function HomeHero() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/tool"
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-3 font-semibold text-white shadow-lg shadow-violet-500/30 transition-transform hover:scale-105"
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-500/30 transition-transform hover:scale-105"
             >
               <Wrench className="h-5 w-5" />
               开始工具创新

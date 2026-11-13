@@ -31,12 +31,12 @@ export function PlanDiagram({ chart }: { chart: string }) {
           fontFamily:
             'ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif',
           themeVariables: {
-            primaryColor: "#ede9fe",
-            primaryBorderColor: "#8b5cf6",
+            primaryColor: "#dbeafe",
+            primaryBorderColor: "#3b82f6",
             primaryTextColor: "#1f2937",
-            lineColor: "#a78bfa",
-            secondaryColor: "#fae8ff",
-            tertiaryColor: "#f5f3ff",
+            lineColor: "#60a5fa",
+            secondaryColor: "#e0f2fe",
+            tertiaryColor: "#eff6ff",
           },
         });
         counter.current += 1;

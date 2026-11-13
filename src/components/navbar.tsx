@@ -43,7 +43,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         {/* Logo */}
         <Link href="/home" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
             <Sparkles className="h-5 w-5" />
           </div>
           <span className="text-lg font-bold">创意雏形合成助手</span>

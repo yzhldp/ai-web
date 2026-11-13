@@ -52,7 +52,7 @@ const MODE_CONFIG = {
     name: "工具创新",
     subtitle: "软件开发规划",
     icon: Wrench,
-    gradient: "from-violet-500 to-purple-500",
+    gradient: "from-blue-600 to-cyan-500",
     desc: "将零散想法整合为可落地的软件开发方案",
     sample: {
       painPoint: "社团活动报名靠群里接龙，统计混乱、容易漏人，也看不到名额剩余。",
@@ -64,7 +64,7 @@ const MODE_CONFIG = {
     name: "创业创新",
     subtitle: "创业项目规划",
     icon: Briefcase,
-    gradient: "from-fuchsia-500 to-pink-500",
+    gradient: "from-sky-500 to-blue-600",
     desc: "将创意点梳理为可落地的创业项目方案",
     sample: {
       painPoint: "校园二手教材买卖信息分散在多个群，价格不透明、交易信任度低。",

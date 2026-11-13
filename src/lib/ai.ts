@@ -13,6 +13,30 @@ export function getDeepSeekModel() {
   return provider(process.env.DEEPSEEK_MODEL || "deepseek-chat");
 }
 
+/** 是否配置了多模态（视觉）模型 */
+export function hasVisionModel() {
+  return Boolean(
+    process.env.VISION_MODEL &&
+      (process.env.VISION_API_KEY || process.env.DEEPSEEK_API_KEY)
+  );
+}
+
+/**
+ * 多模态视觉模型
+ * 默认复用 DEEPSEEK 的密钥与网关，可通过 VISION_* 环境变量指向
+ * 任意 OpenAI 兼容的视觉模型（如 qwen-vl-max、gpt-4o-mini 等）。
+ */
+export function getVisionModel() {
+  const provider = createOpenAI({
+    apiKey: process.env.VISION_API_KEY || process.env.DEEPSEEK_API_KEY,
+    baseURL:
+      process.env.VISION_BASE_URL ||
+      process.env.DEEPSEEK_BASE_URL ||
+      "https://api.deepseek.com",
+  });
+  return provider(process.env.VISION_MODEL || "gpt-4o-mini");
+}
+
 /** 方案末尾统一标注 */
 const DISCLAIMER = "\n\n---\n\n> 本方案仅为创意参考，不代表绝对可行性。";
 

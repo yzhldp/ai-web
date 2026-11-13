@@ -12,6 +12,7 @@ import {
   Pencil,
   Check,
   X,
+  Activity,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
+import { AuditPanel } from "@/components/audit-panel";
 
 interface UserInfo {
   id: string;
@@ -286,7 +288,7 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
 
       {/* 方案 Tab 分区 */}
       <Tabs defaultValue="tool">
-        <TabsList className="mb-6 grid w-full max-w-sm grid-cols-2">
+        <TabsList className="mb-6 grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="tool" className="gap-1">
             <Wrench className="h-4 w-4" />
             工具创新
@@ -295,12 +297,21 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
             <Briefcase className="h-4 w-4" />
             创业创新
           </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-1">
+            <Activity className="h-4 w-4" />
+            AI 审计
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="tool">
           <PlanList plans={toolPlans} />
         </TabsContent>
         <TabsContent value="business">
           <PlanList plans={businessPlans} />
+        </TabsContent>
+        <TabsContent value="audit">
+          <div className="rounded-2xl border bg-white/70 p-5 backdrop-blur">
+            <AuditPanel />
+          </div>
         </TabsContent>
       </Tabs>
 

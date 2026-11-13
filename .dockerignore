@@ -1,3 +1,4 @@
+.env.docker
 node_modules
 .pnpm-store
 .next
@@ -5,12 +6,12 @@ node_modules
 .gitignore
 .env
 .env*.local
-.env.docker
 prisma/*.db
 prisma/*.db-journal
 *.db
 *.db-journal
+.uploads
 README.md
 docs
 Dockerfile
-.dockerignore
+docker-compose.yml

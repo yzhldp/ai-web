@@ -9,9 +9,11 @@ import {
   buildAssistantSystemPrompt,
 } from "@/lib/ai";
 import { rateLimit } from "@/lib/rate-limit";
+import { inspectInput, SAFETY_SYSTEM_SUFFIX, maskPII } from "@/lib/safety";
+import { writeAudit } from "@/lib/audit";
 
 /** 允许流式输出最大时长（DeepSeek 推理可能较慢） */
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** 单次请求的输入上限，防止超长上下文放大成本 */
 const MAX_MESSAGES = 30;
@@ -90,7 +92,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 根据动作与模式构建系统提示词
+  // 根据动作与模式构建系统提示词（统一追加安全约束）
   let system: string;
   if (action === "generate") {
     system =
@@ -103,12 +105,48 @@ export async function POST(request: Request) {
   } else {
     system = buildAssistantSystemPrompt();
   }
+  system += SAFETY_SYSTEM_SUFFIX;
+
+  // 输入安全审查：违法违规内容直接拦截，疑似注入则标记并继续
+  const userText = messages
+    .filter((message: { role?: string }) => message.role === "user")
+    .map((message: { content?: unknown }) =>
+      typeof message.content === "string"
+        ? message.content
+        : Array.isArray(message.content)
+          ? message.content
+              .filter((part: { type?: string }) => part.type === "text")
+              .map((part: { text?: string }) => part.text ?? "")
+              .join(" ")
+          : ""
+    )
+    .join("\n");
+
+  const safety = inspectInput([userText]);
+  if (!safety.allowed) {
+    return NextResponse.json(
+      { error: safety.reason, safetyFlags: safety.flags },
+      { status: 400 }
+    );
+  }
 
   // 流式生成
   const result = streamText({
     model: getDeepSeekModel(),
     system,
     messages: convertToCoreMessages(messages),
+    onFinish: ({ usage }) => {
+      void writeAudit({
+        userId: user.id,
+        action: action === "assistant" ? "assistant" : `chat.${action}`,
+        mode,
+        success: true,
+        safetyFlags: safety.flags,
+        inputChars: userText.length,
+        totalTokens: usage.totalTokens,
+        preview: maskPII(userText).slice(0, 120),
+      });
+    },
   });
 
   // 悬浮助手使用 useChat 客户端，需返回 data stream 协议；

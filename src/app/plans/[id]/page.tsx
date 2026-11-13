@@ -3,8 +3,22 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Wrench, Briefcase } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Markdown } from "@/components/markdown";
+import { PlanDiagram } from "@/components/plan-diagram";
+import { QualityReportView } from "@/components/quality-report";
+import { SourceList } from "@/components/source-list";
+import type { QualityReport, SourceRef } from "@/lib/agent/types";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+
+/** 安全解析数据库中的 JSON 字符串 */
+function parseJSON<T>(value: string | null): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 方案详情页 /plans/[id]（需登录鉴权）
@@ -38,6 +52,8 @@ export default async function PlanDetailPage({
   }
 
   const isTool = plan.mode === "tool";
+  const quality = parseJSON<QualityReport>(plan.quality);
+  const sources = parseJSON<SourceRef[]>(plan.sources) ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,6 +95,28 @@ export default async function PlanDetailPage({
         <div className="rounded-2xl border bg-white p-6">
           <Markdown content={plan.content} />
         </div>
+
+        {/* AI 技术补齐产物：架构图 / 质检报告 / 检索依据 */}
+        {plan.diagram && (
+          <div className="mt-6 rounded-2xl border bg-white p-6">
+            <h2 className="mb-4 text-lg font-bold">方案架构图</h2>
+            <PlanDiagram chart={plan.diagram} />
+          </div>
+        )}
+
+        {quality && (
+          <div className="mt-6 rounded-2xl border bg-white p-6">
+            <h2 className="mb-4 text-lg font-bold">AI 质检报告</h2>
+            <QualityReportView quality={quality} />
+          </div>
+        )}
+
+        {sources.length > 0 && (
+          <div className="mt-6 rounded-2xl border bg-white p-6">
+            <h2 className="mb-4 text-lg font-bold">知识库检索依据</h2>
+            <SourceList sources={sources} />
+          </div>
+        )}
 
         {/* 评论 */}
         <div className="mt-8 rounded-2xl border bg-white p-6">

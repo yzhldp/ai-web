@@ -3,6 +3,7 @@
 /.pnp
 .pnp.js
 .pnpm-store/
+.uploads/
 
 # testing
 /coverage

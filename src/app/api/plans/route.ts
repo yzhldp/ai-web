@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatZodError, planCreateSchema } from "@/lib/validation";
 
 /**
  * GET /api/plans —— 获取当前用户的历史方案列表
@@ -46,24 +47,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  const { mode, painPoint, demand, idea, content } = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
+  }
 
-  // 校验模式合法性
-  if (mode !== "tool" && mode !== "business") {
-    return NextResponse.json({ error: "非法的方案模式" }, { status: 400 });
+  const parsed = planCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
-  if (!content) {
-    return NextResponse.json({ error: "方案内容不能为空" }, { status: 400 });
-  }
+  const { mode, painPoint, demand, idea, content, analysis, sources, quality, diagram, hasImage } =
+    parsed.data;
 
   const plan = await prisma.projectPlan.create({
     data: {
       userId: user.id,
       mode,
-      painPoint: painPoint || "",
-      demand: demand || "",
-      idea: idea || "",
+      painPoint,
+      demand,
+      idea,
       content,
+      analysis: analysis ?? null,
+      sources: sources ?? null,
+      quality: quality ?? null,
+      diagram: diagram ?? null,
+      hasImage: hasImage ?? false,
     },
     select: {
       id: true,

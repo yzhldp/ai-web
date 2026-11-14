@@ -43,3 +43,7 @@ prisma/*.db-journal
 *.tsbuildinfo
 next-env.d.ts
 .env.docker
+
+# 离线运行包与构建缓存
+/dist-offline/
+/.cache/

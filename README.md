@@ -159,6 +159,16 @@ sh scripts/start-local.sh
 
 脚本会自动完成：复制 `.env.example` 为 `.env` 并生成随机 `JWT_SECRET`、使用国内镜像安装依赖、初始化 SQLite、生产构建并启动 `http://localhost:3000`。
 
+### 离线运行包（评委零安装）
+
+若评委电脑没有 Node.js 与 Docker，可提前生成 Windows 离线包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-offline.ps1
+```
+
+产物为 `dist-offline/ai-web-offline-win-x64.zip`（约 210MB），内置便携版 Node.js、全部生产依赖与构建产物。评委解压后双击「启动.bat」即可运行，无需安装任何环境；AI 在线生成仍需在 `.env` 中配置模型密钥。
+
 ### 评审快速体验（3 分钟）
 
 1. 启动服务（Docker Compose 或 `pnpm dev`），确保至少配置了一个模型供应商密钥；

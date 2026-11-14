@@ -169,6 +169,14 @@ powershell -ExecutionPolicy Bypass -File scripts/build-offline.ps1
 
 产物为 `dist-offline/ai-web-offline-win-x64.zip`（约 210MB），内置便携版 Node.js、全部生产依赖与构建产物。评委解压后双击「启动.bat」即可运行，无需安装任何环境；AI 在线生成仍需在 `.env` 中配置模型密钥。
 
+若希望评委解压后直接体验 AI，可在打包时预置免费模型密钥（建议使用可随时吊销的免费额度）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-offline.ps1 -ApiKey "你的智谱key"
+```
+
+该命令会把模型配置与随机 `JWT_SECRET` 写入包内 `.env`，密钥不会进入 Git 仓库。详见 [docs/11-评审体验指南.md](docs/11-评审体验指南.md)。
+
 ### 评审快速体验（3 分钟）
 
 1. 启动服务（Docker Compose 或 `pnpm dev`），确保至少配置了一个模型供应商密钥；

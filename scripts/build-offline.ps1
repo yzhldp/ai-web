@@ -1,10 +1,16 @@
 ﻿# 生成「零安装」离线运行包（Windows x64）
 # 产物：dist-offline/ai-web-offline-win-x64.zip
 # 评委解压后双击「启动.bat」即可运行，无需安装 Node.js 或 Docker。
-# 用法：powershell -ExecutionPolicy Bypass -File scripts/build-offline.ps1
+# 用法：
+#   powershell -ExecutionPolicy Bypass -File scripts/build-offline.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/build-offline.ps1 -ApiKey "你的免费模型key"
 
 param(
-  [string]$NodeVersion = "20.18.0"
+  [string]$NodeVersion = "20.18.0",
+  # 可选：预置模型密钥，评委解压即可直接使用 AI（建议使用免费额度密钥）
+  [string]$ApiKey = "",
+  [string]$ApiBaseUrl = "https://open.bigmodel.cn/api/paas/v4",
+  [string]$ApiModel = "glm-4-flash"
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,6 +47,23 @@ foreach ($item in $items) {
   if (Test-Path $item) { Copy-Item $item (Join-Path $stage $item) -Recurse -Force }
 }
 Remove-Item (Join-Path $stage "prisma\*.db") -Force -ErrorAction SilentlyContinue
+
+# 可选：把模型密钥写入包内 .env，评委解压后可直接体验 AI
+if ($ApiKey) {
+  Write-Host "      写入预置模型密钥与随机 JWT_SECRET ..." -ForegroundColor Cyan
+  $envFile = Join-Path $stage ".env"
+  Copy-Item (Join-Path $stage ".env.example") $envFile -Force
+  $bytes = New-Object byte[] 48
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $jwt = [Convert]::ToBase64String($bytes)
+  $content = Get-Content $envFile
+  $content = $content -replace '^OPENAI_API_KEY=.*', "OPENAI_API_KEY=`"$ApiKey`""
+  $content = $content -replace '^OPENAI_BASE_URL=.*', "OPENAI_BASE_URL=`"$ApiBaseUrl`""
+  $content = $content -replace '^OPENAI_MODEL=.*', "OPENAI_MODEL=`"$ApiModel`""
+  $content = $content -replace '^JWT_SECRET=.*', "JWT_SECRET=`"$jwt`""
+  $content += 'AI_PROVIDER_ORDER="openai"'
+  $content | Set-Content $envFile -Encoding UTF8
+}
 
 # 3. 安装依赖并构建
 Write-Host "[3/6] 安装依赖（国内镜像）..." -ForegroundColor Cyan

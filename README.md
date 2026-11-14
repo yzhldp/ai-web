@@ -143,6 +143,22 @@ pnpm build
 pnpm start
 ```
 
+### 一键启动（无需 Docker，Windows / macOS / Linux）
+
+只需已安装 Node.js 18.17+（推荐 20 LTS）：
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1
+```
+
+```bash
+# macOS / Linux
+sh scripts/start-local.sh
+```
+
+脚本会自动完成：复制 `.env.example` 为 `.env` 并生成随机 `JWT_SECRET`、使用国内镜像安装依赖、初始化 SQLite、生产构建并启动 `http://localhost:3000`。
+
 ### 评审快速体验（3 分钟）
 
 1. 启动服务（Docker Compose 或 `pnpm dev`），确保至少配置了一个模型供应商密钥；

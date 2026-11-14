@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Send, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export function CommentSection({ planId }: { planId: string | null }) {
         <MessagesSquare className="h-5 w-5 text-primary" />
         <h3 className="text-lg font-bold">评论区</h3>
         <span className="text-sm text-muted-foreground">
-          （{comments.length} 条评论）
+          （{comments.length} 条评论，点击头像可查看对方公开项目）
         </span>
       </div>
 
@@ -121,16 +122,26 @@ export function CommentSection({ planId }: { planId: string | null }) {
         <div className="mb-4 space-y-4">
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="text-sm">
-                  {displayName(comment.user).charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <Link
+                href={`/users/${comment.user.id}`}
+                aria-label={`查看 ${displayName(comment.user)} 的个人主页`}
+                title="查看个人主页"
+                className="shrink-0 rounded-full ring-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="text-sm">
+                    {displayName(comment.user).charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-semibold">
+                  <Link
+                    href={`/users/${comment.user.id}`}
+                    className="text-sm font-semibold hover:text-primary hover:underline"
+                  >
                     {displayName(comment.user)}
-                  </span>
+                  </Link>
                   <span className="text-xs text-muted-foreground">
                     {formatTime(comment.createdAt)}
                   </span>
@@ -147,7 +158,7 @@ export function CommentSection({ planId }: { planId: string | null }) {
       {/* 评论输入 */}
       <form onSubmit={handleSubmit} className="space-y-3">
         <Textarea
-          placeholder="发表你的看法...（最多 500 字，仅本人可见）"
+          placeholder="分享你的项目，或对方案技术提问（最多 500 字）"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           maxLength={500}

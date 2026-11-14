@@ -32,8 +32,8 @@ export async function GET(
   if (!plan) {
     return NextResponse.json({ error: "方案不存在" }, { status: 404 });
   }
-  // 方案包含用户的商业/技术信息，仅作者本人可读取
-  if (plan.userId !== user.id) {
+  // 私有方案仅作者可读；公开方案允许其他登录用户浏览与评论
+  if (plan.userId !== user.id && plan.visibility !== "public") {
     return NextResponse.json({ error: "无权限查看该方案" }, { status: 403 });
   }
 
@@ -41,7 +41,7 @@ export async function GET(
 }
 
 /**
- * PATCH /api/plans/[id] —— 迭代更新方案内容（仅本人可操作）
+ * PATCH /api/plans/[id] —— 更新方案内容或公开状态（仅本人可操作）
  */
 export async function PATCH(
   request: Request,
@@ -75,20 +75,27 @@ export async function PATCH(
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const { content, analysis, sources, quality, diagram } = parsed.data;
+  const { content, analysis, sources, quality, diagram, visibility } = parsed.data;
+
+  // 内容迭代与可见性切换至少提交一项
+  if (content === undefined && visibility === undefined) {
+    return NextResponse.json({ error: "缺少需要更新的内容" }, { status: 400 });
+  }
 
   const updated = await prisma.projectPlan.update({
     where: { id: params.id },
     data: {
-      content,
+      ...(content !== undefined ? { content } : {}),
       ...(analysis !== undefined ? { analysis } : {}),
       ...(sources !== undefined ? { sources } : {}),
       ...(quality !== undefined ? { quality } : {}),
       ...(diagram !== undefined ? { diagram } : {}),
+      ...(visibility !== undefined ? { visibility } : {}),
     },
     select: {
       id: true,
       content: true,
+      visibility: true,
       updatedAt: true,
     },
   });

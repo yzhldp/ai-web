@@ -39,6 +39,7 @@ model ProjectPlan {
   quality   String? // 方案质检报告
   diagram   String? // Mermaid 架构图源码
   hasImage  Boolean @default(false) // 是否使用了多模态参考图
+  visibility String @default("private") // 可见性：public 公开（他人可浏览与评论）/ private 私有（仅作者）
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

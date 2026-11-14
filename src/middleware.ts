@@ -3,7 +3,14 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 /** 需要登录鉴权的页面路由前缀 */
-const PROTECTED_PATHS = ["/home", "/tool", "/business", "/profile", "/plans"];
+const PROTECTED_PATHS = [
+  "/home",
+  "/tool",
+  "/business",
+  "/profile",
+  "/plans",
+  "/users",
+];
 
 /** 仅未登录用户可访问（登录后访问则跳转首页） */
 const AUTH_PATHS = ["/login"];
@@ -61,6 +68,7 @@ export const config = {
     "/business/:path*",
     "/profile/:path*",
     "/plans/:path*",
+    "/users/:path*",
     "/login/:path*",
   ],
 };

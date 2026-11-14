@@ -42,6 +42,7 @@ export const planCreateSchema = z.object({
   quality: z.string().max(10000).optional(),
   diagram: z.string().max(8000).optional(),
   hasImage: z.boolean().optional(),
+  visibility: z.enum(["public", "private"]).default("private"),
 });
 
 /** 统一提取 Zod 错误信息 */
@@ -49,11 +50,12 @@ export function formatZodError(error: z.ZodError): string {
   return error.issues[0]?.message ?? "请求参数不合法";
 }
 
-/** 方案迭代更新请求（内容 + AI 元数据） */
+/** 方案更新请求（内容 / AI 元数据 / 公开与私有切换） */
 export const planUpdateSchema = z.object({
-  content: z.string().min(1, "方案内容不能为空").max(60000),
+  content: z.string().min(1, "方案内容不能为空").max(60000).optional(),
   analysis: z.string().max(20000).nullable().optional(),
   sources: z.string().max(30000).nullable().optional(),
   quality: z.string().max(10000).nullable().optional(),
   diagram: z.string().max(8000).nullable().optional(),
+  visibility: z.enum(["public", "private"]).optional(),
 });

@@ -67,8 +67,10 @@
 - 方案迭代复用完整 Agent 工作流，迭代后自动刷新知识依据、质检与架构图
 - 方案详情支持导出 Markdown、打印 / 另存 PDF
 - 方案自动保存、评论交流、历史方案管理
+- **公开 / 私有项目**：个人主页可一键切换项目可见性；公开项目展示在个人公开主页与首页「社区精选」，并允许其他登录用户浏览与评论
+- **社区化评论区**：预置项目分享与技术问答示例；点击评论者头像即可进入其公开主页查看公开项目
 - 可拖拽卡通悬浮助手「创意小蓝」：位置记忆、本地 FAQ、页面跳转；未接入 AI 也可用，接入后自动增强
-- 账号体系：注册 / 登录 / 退出，JWT + HttpOnly Cookie；方案与评论仅本人可见
+- 账号体系：注册 / 登录 / 退出，JWT + HttpOnly Cookie；私有方案与评论仅作者可见，公开方案开放社区交流
 
 ---
 
@@ -151,7 +153,10 @@ pnpm start
 4. 切换「依据 / 质检 / 架构图 / 知识库」标签，查看检索得分、质量评分与架构图；
 5. 在「知识库」标签点击「运行评测」，查看 Recall@6 / HitRate / MRR；
 6. 在方案下方追加补充需求，验证迭代会重新执行 Agent 并刷新质检与架构图；
-7. 打开「个人主页 → AI 审计」，查看模型路由、Token 消耗、自动切换次数与模型评测。
+7. 打开「个人主页 → AI 审计」，查看模型路由、Token 消耗、自动切换次数与模型评测；
+8. 在「个人主页」将项目设为公开，返回首页查看「社区精选」，进入项目评论区并点击头像查看他人公开主页。
+
+> 演示账号（Docker 启动时自动初始化，可用 `SEED_DEMO_DATA=false` 关闭）：`linxiaoman` / `chenyiming` / `suqing` / `zhouye`，密码统一为 `demo1234`。
 
 ### 开发与测试
 
@@ -244,9 +249,9 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | GET | `/api/agent/models` | 多供应商路由状态（脱敏） |
 | POST | `/api/agent/models/evaluate` | 运行模型质量评测（结构化 / 工具 / 引用） |
 | GET | `/api/health` | 健康检查（数据库、知识库、模型配置） |
-| GET/POST | `/api/plans` | 方案列表 / 保存 |
-| PATCH/DELETE | `/api/plans/[id]` | 方案迭代 / 删除 |
-| POST | `/api/comments` | 评论 |
+| GET/POST | `/api/plans` | 方案列表 / 保存（含 `visibility` 公开状态） |
+| GET/PATCH/DELETE | `/api/plans/[id]` | 方案详情 / 迭代与公开切换 / 删除（公开方案他人可读） |
+| GET/POST | `/api/comments` | 评论列表 / 发布（公开方案开放，私有方案仅作者） |
 
 SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `src/lib/agent/types.ts`。
 
@@ -257,7 +262,8 @@ SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `
 ```
 .
 ├── prisma/
-│   └── schema.prisma            # User / ProjectPlan / Comment / AiAuditLog
+│   ├── schema.prisma            # User / ProjectPlan / Comment / AiAuditLog
+│   └── seed.mjs                 # 演示用户 / 公开项目 / 评论初始化
 ├── src/
 │   ├── app/
 │   │   ├── api/
@@ -266,7 +272,7 @@ SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `
 │   │   │   ├── knowledge/       # 知识库检索
 │   │   │   ├── health/          # 健康检查
 │   │   │   ├── chat/ plans/ comments/ auth/
-│   │   ├── login/ home/ tool/ business/ profile/ plans/[id]/   # 页面
+│   │   ├── login/ home/ tool/ business/ profile/ plans/[id]/ users/[id]/   # 页面
 │   │   ├── error.tsx / loading.tsx
 │   ├── components/
 │   │   ├── plan-workspace.tsx   # 工作台（输入 + Agent 输出）
@@ -315,7 +321,9 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 2. 点击「填入示例」→「创新合成」，观察五阶段时间线；
 3. 切换「依据 / 质检 / 架构图 / 知识库」标签查看中间产物；
 4. 生成完成后自动保存，个人主页可查看历史方案与「AI 审计」；
-5. 提交含注入指令的输入，验证安全拦截。
+5. 在个人主页切换项目「公开 / 私有」，公开后可在首页「社区精选」与他人公开主页看到；
+6. 进入公开项目评论区，发表项目分享或技术提问，点击评论者头像验证公开主页跳转；
+7. 提交含注入指令的输入，验证安全拦截。
 
 ---
 

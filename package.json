@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
+    "db:seed": "node prisma/seed.mjs",
     "db:migrate": "prisma migrate dev --name init",
     "db:studio": "prisma studio"
   },

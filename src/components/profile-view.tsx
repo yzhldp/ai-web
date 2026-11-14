@@ -14,6 +14,9 @@ import {
   Check,
   X,
   Activity,
+  Globe,
+  Lock,
+  ExternalLink,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -43,6 +46,7 @@ interface PlanItem {
   demand: string;
   idea: string;
   content: string;
+  visibility: "public" | "private";
   createdAt: string;
   updatedAt: string;
 }
@@ -82,6 +86,8 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
 
   // 详情弹窗
   const [detailPlan, setDetailPlan] = useState<PlanItem | null>(null);
+  // 正在切换公开状态的方案 ID
+  const [visibilityUpdating, setVisibilityUpdating] = useState<string | null>(null);
 
   const loadPlans = useCallback(async () => {
     setLoading(true);
@@ -147,6 +153,41 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
     }
   }
 
+  /** 切换方案公开 / 私有 */
+  async function handleToggleVisibility(plan: PlanItem) {
+    const next: PlanItem["visibility"] =
+      plan.visibility === "public" ? "private" : "public";
+    setVisibilityUpdating(plan.id);
+    try {
+      const res = await fetch(`/api/plans/${plan.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "设置失败");
+        return;
+      }
+      const patch = (prev: PlanItem[]) =>
+        prev.map((p) => (p.id === plan.id ? { ...p, visibility: next } : p));
+      setToolPlans(patch);
+      setBusinessPlans(patch);
+      if (detailPlan?.id === plan.id) {
+        setDetailPlan((prev) => (prev ? { ...prev, visibility: next } : prev));
+      }
+      toast.success(
+        next === "public"
+          ? "已设为公开，其他用户可在你的主页查看并评论"
+          : "已设为私有，仅你自己可见"
+      );
+    } catch {
+      toast.error("网络异常，请重试");
+    } finally {
+      setVisibilityUpdating(null);
+    }
+  }
+
   /** 退出登录 */
   async function handleLogout() {
     try {
@@ -163,7 +204,7 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
   function PlanCard({ plan }: { plan: PlanItem }) {
     return (
       <div className="flex flex-col rounded-xl border bg-white p-4 transition-shadow hover:shadow-md">
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
               plan.mode === "tool"
@@ -178,10 +219,24 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
             )}
             {plan.mode === "tool" ? "工具创新" : "创业创新"}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {formatTime(plan.updatedAt)}
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              plan.visibility === "public"
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {plan.visibility === "public" ? (
+              <Globe className="h-3 w-3" />
+            ) : (
+              <Lock className="h-3 w-3" />
+            )}
+            {plan.visibility === "public" ? "公开" : "私有"}
           </span>
         </div>
+        <p className="mb-1 text-xs text-muted-foreground">
+          更新于 {formatTime(plan.updatedAt)}
+        </p>
         <p className="mb-4 flex-1 text-sm text-muted-foreground">
           {preview(plan.content)}
         </p>
@@ -194,6 +249,32 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
           >
             <Eye className="h-3.5 w-3.5" />
             查看详情
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            disabled={visibilityUpdating === plan.id}
+            onClick={() => handleToggleVisibility(plan)}
+            title={
+              plan.visibility === "public"
+                ? "设为私有（仅自己可见）"
+                : "设为公开（他人可在你的主页查看并评论）"
+            }
+            aria-label={
+              plan.visibility === "public" ? "设为私有" : "设为公开"
+            }
+          >
+            {plan.visibility === "public" ? (
+              <Lock className="h-3.5 w-3.5" />
+            ) : (
+              <Globe className="h-3.5 w-3.5" />
+            )}
+            {visibilityUpdating === plan.id
+              ? "处理中"
+              : plan.visibility === "public"
+                ? "设为私有"
+                : "设为公开"}
           </Button>
           <Button
             size="sm"
@@ -287,6 +368,13 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
           )}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">账号：{user.username}</p>
+        <Link
+          href={`/users/${user.id}`}
+          className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+        >
+          <ExternalLink className="h-4 w-4" />
+          查看我的公开主页
+        </Link>
       </div>
 
       {/* 方案 Tab 分区 */}

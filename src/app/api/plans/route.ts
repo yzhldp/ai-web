@@ -29,6 +29,7 @@ export async function GET(request: Request) {
       demand: true,
       idea: true,
       content: true,
+      visibility: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -58,8 +59,19 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
-  const { mode, painPoint, demand, idea, content, analysis, sources, quality, diagram, hasImage } =
-    parsed.data;
+  const {
+    mode,
+    painPoint,
+    demand,
+    idea,
+    content,
+    analysis,
+    sources,
+    quality,
+    diagram,
+    hasImage,
+    visibility,
+  } = parsed.data;
 
   const plan = await prisma.projectPlan.create({
     data: {
@@ -74,6 +86,7 @@ export async function POST(request: Request) {
       quality: quality ?? null,
       diagram: diagram ?? null,
       hasImage: hasImage ?? false,
+      visibility,
     },
     select: {
       id: true,
@@ -82,6 +95,7 @@ export async function POST(request: Request) {
       demand: true,
       idea: true,
       content: true,
+      visibility: true,
       createdAt: true,
       updatedAt: true,
     },

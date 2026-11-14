@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Wrench, Briefcase } from "lucide-react";
+import { ArrowLeft, Wrench, Briefcase, Globe, Lock } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Markdown } from "@/components/markdown";
 import { PlanDiagram } from "@/components/plan-diagram";
@@ -23,26 +23,26 @@ function parseJSON<T>(value: string | null): T | null {
 
 /**
  * 方案详情页 /plans/[id]（需登录鉴权）
- * 展示完整方案内容与评论
+ * 作者可查看自己全部方案；公开方案其他登录用户也可浏览与评论
  */
 export default async function PlanDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const user = await getCurrentUser();
-  if (!user) {
+  const viewer = await getCurrentUser();
+  if (!viewer) {
     notFound();
   }
 
   const plan = await prisma.projectPlan.findUnique({
     where: { id: params.id },
     include: {
-      user: { select: { username: true, nickname: true } },
+      user: { select: { id: true, username: true, nickname: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         include: {
-          user: { select: { username: true, nickname: true } },
+          user: { select: { id: true, username: true, nickname: true } },
         },
       },
     },
@@ -51,11 +51,14 @@ export default async function PlanDetailPage({
   if (!plan) {
     notFound();
   }
-  // 仅方案作者可查看详情，避免通过 ID 越权读取他人工商业信息
-  if (plan.userId !== user.id) {
+  // 私有方案仅作者可查看；公开方案允许其他登录用户浏览
+  if (plan.userId !== viewer.id && plan.visibility !== "public") {
     notFound();
   }
 
+  const isOwner = plan.userId === viewer.id;
+  const authorName = plan.user.nickname || plan.user.username;
+  const isPublic = plan.visibility === "public";
   const isTool = plan.mode === "tool";
   const quality = parseJSON<QualityReport>(plan.quality);
   const sources = parseJSON<SourceRef[]>(plan.sources) ?? [];
@@ -65,11 +68,11 @@ export default async function PlanDetailPage({
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 pb-16 pt-24">
         <Link
-          href="/profile"
+          href={isOwner ? "/profile" : `/users/${plan.user.id}`}
           className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          返回个人主页
+          {isOwner ? "返回个人主页" : `返回 ${authorName} 的主页`}
         </Link>
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -88,11 +91,34 @@ export default async function PlanDetailPage({
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold">
-                {isTool ? "工具创新方案" : "创业创新方案"}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold">
+                  {isTool ? "工具创新方案" : "创业创新方案"}
+                </h1>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    isPublic
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {isPublic ? (
+                    <Globe className="h-3 w-3" />
+                  ) : (
+                    <Lock className="h-3 w-3" />
+                  )}
+                  {isPublic ? "公开" : "私有"}
+                </span>
+              </div>
               <p className="text-sm text-muted-foreground">
-                作者：{plan.user.nickname || plan.user.username} · 更新于{" "}
+                作者：
+                <Link
+                  href={`/users/${plan.user.id}`}
+                  className="hover:text-foreground hover:underline"
+                >
+                  {authorName}
+                </Link>
+                {" · "}更新于{" "}
                 {new Date(plan.updatedAt).toLocaleString("zh-CN")}
               </p>
             </div>
@@ -138,16 +164,28 @@ export default async function PlanDetailPage({
             <div className="space-y-4">
               {plan.comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                    {(comment.user.nickname || comment.user.username)
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
+                  <Link
+                    href={`/users/${comment.user.id}`}
+                    aria-label={`查看 ${
+                      comment.user.nickname || comment.user.username
+                    } 的个人主页`}
+                    title="查看个人主页"
+                    className="shrink-0 rounded-full transition-opacity hover:opacity-80"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                      {(comment.user.nickname || comment.user.username)
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+                  </Link>
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold">
+                      <Link
+                        href={`/users/${comment.user.id}`}
+                        className="text-sm font-semibold hover:text-primary hover:underline"
+                      >
                         {comment.user.nickname || comment.user.username}
-                      </span>
+                      </Link>
                       <span className="text-xs text-muted-foreground">
                         {new Date(comment.createdAt).toLocaleString("zh-CN")}
                       </span>

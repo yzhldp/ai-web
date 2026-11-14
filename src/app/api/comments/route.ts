@@ -13,14 +13,14 @@ const commentSchema = z.object({
     .max(500, "评论不能超过 500 字"),
 });
 
-/** 校验方案存在且属于当前用户（方案默认私有） */
-async function assertPlanOwner(planId: string, userId: string) {
+/** 校验方案存在且当前用户可访问（公开方案所有人可读，私有方案仅作者） */
+async function assertPlanAccess(planId: string, userId: string) {
   const plan = await prisma.projectPlan.findUnique({
     where: { id: planId },
-    select: { userId: true },
+    select: { userId: true, visibility: true },
   });
   if (!plan) return { ok: false as const, status: 404, error: "方案不存在" };
-  if (plan.userId !== userId) {
+  if (plan.userId !== userId && plan.visibility !== "public") {
     return { ok: false as const, status: 403, error: "无权限访问该方案的评论" };
   }
   return { ok: true as const };
@@ -28,7 +28,7 @@ async function assertPlanOwner(planId: string, userId: string) {
 
 /**
  * GET /api/comments?planId=xxx —— 获取指定方案的所有评论
- * 方案默认私有，仅作者可读取其评论
+ * 公开方案所有登录用户可读；私有方案仅作者可读
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "缺少 planId 参数" }, { status: 400 });
   }
 
-  const permission = await assertPlanOwner(planId, user.id);
+  const permission = await assertPlanAccess(planId, user.id);
   if (!permission.ok) {
     return NextResponse.json({ error: permission.error }, { status: permission.status });
   }
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   }
 
   const { planId, content } = parsed.data;
-  const permission = await assertPlanOwner(planId, user.id);
+  const permission = await assertPlanAccess(planId, user.id);
   if (!permission.ok) {
     return NextResponse.json({ error: permission.error }, { status: permission.status });
   }

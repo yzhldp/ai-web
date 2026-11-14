@@ -40,18 +40,23 @@ if (-not (Get-EnvValue "DEEPSEEK_API_KEY")) {
 }
 
 # 3. 安装依赖并初始化数据库
-$env:COREPACK_NPM_REGISTRY = "https://registry.npmmirror.com"
+# 直接使用 npx 调用指定版本 pnpm，避免 corepack 在国内镜像下的签名校验失败
+$env:npm_config_registry = "https://registry.npmmirror.com"
+$env:PRISMA_ENGINES_MIRROR = "https://registry.npmmirror.com/-/binary/prisma"
 Write-Host "[2/4] 安装依赖（使用国内镜像，首次约 2-4 分钟）..." -ForegroundColor Cyan
-corepack enable | Out-Null
-corepack prepare pnpm@10.5.2 --activate | Out-Null
-pnpm install --frozen-lockfile
+# --ignore-scripts 规避 pnpm 10 的构建脚本批准机制，随后显式生成 Prisma Client
+& npx --yes pnpm@10.5.2 install --frozen-lockfile --ignore-scripts --node-linker=hoisted
+if ($LASTEXITCODE -ne 0) { throw "依赖安装失败，请检查网络后重试" }
+& npx --yes pnpm@10.5.2 exec prisma generate
+if ($LASTEXITCODE -ne 0) { throw "Prisma Client 生成失败" }
 
 Write-Host "[3/4] 初始化数据库与构建..." -ForegroundColor Cyan
-pnpm exec prisma db push
-pnpm build
+& npx --yes pnpm@10.5.2 exec prisma db push
+& npx --yes pnpm@10.5.2 build
+if ($LASTEXITCODE -ne 0) { throw "构建失败" }
 
 # 4. 启动
 Write-Host "[4/4] 启动服务： http://localhost:3000" -ForegroundColor Green
 Write-Host "      按 Ctrl+C 停止" -ForegroundColor DarkGray
 $env:PORT = "3000"
-pnpm start
+& npx --yes pnpm@10.5.2 start

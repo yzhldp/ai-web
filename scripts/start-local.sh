@@ -30,15 +30,15 @@ if ! grep -q '^DEEPSEEK_API_KEY="[^"]' .env; then
   echo "      [提示] 未填写模型密钥，AI 生成不可用；悬浮助手离线问答仍可使用"
 fi
 
-export COREPACK_NPM_REGISTRY="https://registry.npmmirror.com"
+export npm_config_registry="https://registry.npmmirror.com"
+export PRISMA_ENGINES_MIRROR="https://registry.npmmirror.com/-/binary/prisma"
 echo "[2/4] 安装依赖（首次约 2-4 分钟）..."
-corepack enable >/dev/null 2>&1 || true
-corepack prepare pnpm@10.5.2 --activate >/dev/null 2>&1 || true
-pnpm install --frozen-lockfile
+npx --yes pnpm@10.5.2 install --frozen-lockfile --ignore-scripts --node-linker=hoisted
+npx --yes pnpm@10.5.2 exec prisma generate
 
 echo "[3/4] 初始化数据库与构建..."
-pnpm exec prisma db push
-pnpm build
+npx --yes pnpm@10.5.2 exec prisma db push
+npx --yes pnpm@10.5.2 build
 
 echo "[4/4] 启动服务： http://localhost:3000  （Ctrl+C 停止）"
-PORT=3000 pnpm start
+PORT=3000 npx --yes pnpm@10.5.2 start

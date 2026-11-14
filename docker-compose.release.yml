@@ -1,0 +1,28 @@
+services:
+  app:
+    # 直接拉取 GitHub Actions 预先构建好的镜像，无需本地编译
+    image: ghcr.io/yzhldp/ai-web:latest
+    pull_policy: always
+    container_name: creative-prototype-assistant
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      DATABASE_URL: file:/app/data/prod.db
+      TZ: Asia/Shanghai
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  app-data:
+    name: creative-prototype-assistant-data

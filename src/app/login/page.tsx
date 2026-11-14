@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Sparkles, User, Lock } from "lucide-react";
+import { User, Lock } from "lucide-react";
 import { ComicCharacter } from "@/components/comic-character";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,35 +106,36 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row">
       {/* 左侧品牌展示区（窄屏在上，大屏在左） */}
-      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-b from-sky-100 via-blue-50 to-cyan-100 px-6 py-8 lg:flex-1 lg:px-10 lg:py-12">
+      <div className="flex w-full flex-col items-center justify-between bg-gradient-to-b from-sky-100 via-blue-50 to-cyan-100 px-4 py-6 sm:px-6 lg:flex-1 lg:px-8 lg:py-10">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mt-10 text-center"
+          className="mt-4 w-full text-center sm:mt-6"
         >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-100/70 px-4 py-1.5 text-sm text-blue-700 backdrop-blur">
-            <Sparkles className="h-4 w-4" />
-            传智杯 AI Web 参赛作品
-          </div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-800">
+          <h1 className="text-4xl font-black tracking-tight text-slate-800 sm:text-5xl">
             创意雏形合成助手
           </h1>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mx-auto mt-3 max-w-2xl text-base text-slate-600 sm:text-lg">
             输入零散的痛点、需求与奇思妙想，AI 帮你聚合成完整的项目雏形规划
           </p>
         </motion.div>
 
-        {/* 漫画小人动画 */}
+        {/* 漫画小人动画：随左侧面板宽度等比缩放，尽量铺满 */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.3 }}
+          className="flex w-full flex-1 items-center justify-center py-2"
         >
-          <ComicCharacter />
+          <div className="relative aspect-[10/10.5] w-[320px] shrink-0 min-[480px]:w-[420px] sm:w-[440px] md:w-[600px] lg:w-[440px] xl:w-[540px] 2xl:w-[620px]">
+            <div className="origin-top-left scale-[0.8] min-[480px]:scale-[1.05] sm:scale-[1.1] md:scale-[1.5] lg:scale-[1.1] xl:scale-[1.35] 2xl:scale-[1.55]">
+              <ComicCharacter />
+            </div>
+          </div>
         </motion.div>
 
-        <p className="pb-6 text-sm text-slate-500">
+        <p className="pb-2 text-sm text-slate-500">
           © 2026 创意雏形合成助手 · 让灵感快速落地
         </p>
       </div>

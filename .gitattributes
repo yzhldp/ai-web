@@ -1,0 +1,4 @@
+# 统一脚本换行符，避免 Windows 检出后容器内 shebang 无法解析
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile text eol=lf

@@ -132,7 +132,10 @@ cp .env.example .env
 # 3. 初始化数据库
 pnpm db:push
 
-# 4. 启动开发服务器
+# 4. 可选：初始化演示用户、公开项目与评论
+pnpm db:seed
+
+# 5. 启动开发服务器
 pnpm dev
 ```
 

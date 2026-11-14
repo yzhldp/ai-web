@@ -67,7 +67,7 @@
 - 方案迭代复用完整 Agent 工作流，迭代后自动刷新知识依据、质检与架构图
 - 方案详情支持导出 Markdown、打印 / 另存 PDF
 - 方案自动保存、评论交流、历史方案管理
-- 悬浮创意助手：通用问答 + 路由指令识别（如「跳转到工具创新」）
+- 可拖拽卡通悬浮助手「创意小蓝」：位置记忆、本地 FAQ、页面跳转；未接入 AI 也可用，接入后自动增强
 - 账号体系：注册 / 登录 / 退出，JWT + HttpOnly Cookie；方案与评论仅本人可见
 
 ---
@@ -236,7 +236,8 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | POST | `/api/agent/generate` | Agent 生成，SSE 推送阶段 / Token / 依据 / 工具 / 质检事件 |
-| POST | `/api/chat` | 快速生成、方案迭代、悬浮助手 |
+| POST | `/api/chat` | 快速生成、方案迭代 |
+| POST | `/api/assistant` | 悬浮助手问答（未接 AI 时返回离线提示） |
 | POST | `/api/knowledge` | 混合检索调试（返回双通道得分） |
 | GET | `/api/knowledge` | 知识库统计信息 |
 | GET | `/api/agent/audit` | AI 调用审计与用量统计 |

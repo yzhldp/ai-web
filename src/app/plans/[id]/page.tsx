@@ -10,6 +10,7 @@ import { ExportButtons } from "@/components/export-buttons";
 import type { QualityReport, SourceRef } from "@/lib/agent/types";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { canAccessPlan, isPlanOwner } from "@/lib/plan-access";
 
 /** 安全解析数据库中的 JSON 字符串 */
 function parseJSON<T>(value: string | null): T | null {
@@ -52,11 +53,11 @@ export default async function PlanDetailPage({
     notFound();
   }
   // 私有方案仅作者可查看；公开方案允许其他登录用户浏览
-  if (plan.userId !== viewer.id && plan.visibility !== "public") {
+  if (!canAccessPlan(plan, viewer.id)) {
     notFound();
   }
 
-  const isOwner = plan.userId === viewer.id;
+  const isOwner = isPlanOwner(plan, viewer.id);
   const authorName = plan.user.nickname || plan.user.username;
   const isPublic = plan.visibility === "public";
   const isTool = plan.mode === "tool";

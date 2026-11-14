@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { inspectInput } from "@/lib/safety";
+import { canAccessPlan } from "@/lib/plan-access";
 
 const commentSchema = z.object({
   planId: z.string().min(1, "缺少 planId").max(64),
@@ -20,7 +21,7 @@ async function assertPlanAccess(planId: string, userId: string) {
     select: { userId: true, visibility: true },
   });
   if (!plan) return { ok: false as const, status: 404, error: "方案不存在" };
-  if (plan.userId !== userId && plan.visibility !== "public") {
+  if (!canAccessPlan(plan, userId)) {
     return { ok: false as const, status: 403, error: "无权限访问该方案的评论" };
   }
   return { ok: true as const };

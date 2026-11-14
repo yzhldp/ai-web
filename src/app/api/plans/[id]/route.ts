@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatZodError, planUpdateSchema } from "@/lib/validation";
+import { canAccessPlan } from "@/lib/plan-access";
 
 /**
  * GET /api/plans/[id] —— 获取方案详情（含评论列表）
@@ -33,7 +34,7 @@ export async function GET(
     return NextResponse.json({ error: "方案不存在" }, { status: 404 });
   }
   // 私有方案仅作者可读；公开方案允许其他登录用户浏览与评论
-  if (plan.userId !== user.id && plan.visibility !== "public") {
+  if (!canAccessPlan(plan, user.id)) {
     return NextResponse.json({ error: "无权限查看该方案" }, { status: 403 });
   }
 

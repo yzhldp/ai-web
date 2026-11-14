@@ -45,7 +45,8 @@ COPY --from=builder /app/prisma ./prisma
 # 数据目录交给非 root 用户，配合 volume 持久化 SQLite
 RUN mkdir -p /app/data && chown -R node:node /app/data /app/.next
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod 755 /app/docker-entrypoint.sh
+# Windows 检出可能带入 CRLF，统一转为 LF 后再赋权，避免 shebang 解析失败
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod 755 /app/docker-entrypoint.sh
 
 EXPOSE 3000
 

@@ -166,6 +166,18 @@ pnpm build         # 生产构建
 
 ## 🐳 Docker 部署（推荐）
 
+### 方式零：拉取预构建镜像（评审/演示最快，约 1-2 分钟）
+
+镜像由 GitHub Actions 在每次推送后自动构建并推送，本地无需安装依赖、无需编译：
+
+```bash
+cp .env.docker.example .env.docker
+# 编辑 .env.docker：填写 DEEPSEEK_API_KEY，并将 JWT_SECRET 改为随机长字符串
+docker compose -f docker-compose.release.yml up -d
+```
+
+若拉取镜像较慢，可先配置镜像加速器，或改用方式一/二。
+
 ### 方式一：Docker Compose
 
 ```bash
@@ -177,6 +189,8 @@ docker compose up -d --build
 docker compose ps
 curl http://localhost:3000/api/health
 ```
+
+构建阶段已内置国内加速策略：Alpine 包源、npm 源与 Prisma 引擎均走镜像站，并启用 pnpm / Next.js 构建缓存，首次构建时间显著缩短。
 
 Compose 会：
 

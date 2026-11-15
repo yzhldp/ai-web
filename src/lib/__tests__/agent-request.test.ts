@@ -21,6 +21,17 @@ describe("agentRequestSchema - 用户选择模型", () => {
     }
   });
 
+  it("允许选择智谱 GLM", () => {
+    const parsed = agentRequestSchema.safeParse({
+      mode: "tool",
+      preferredProvider: "zhipu",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.preferredProvider).toBe("zhipu");
+    }
+  });
+
   it("拒绝未知供应商", () => {
     const parsed = agentRequestSchema.safeParse({
       mode: "tool",

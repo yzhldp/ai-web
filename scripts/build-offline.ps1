@@ -50,18 +50,18 @@ Remove-Item (Join-Path $stage "prisma\*.db") -Force -ErrorAction SilentlyContinu
 
 # 可选：把模型密钥写入包内 .env，评委解压后可直接体验 AI
 if ($ApiKey) {
-  Write-Host "      写入预置模型密钥与随机 JWT_SECRET ..." -ForegroundColor Cyan
+  Write-Host "      写入预置智谱 GLM 密钥与随机 JWT_SECRET ..." -ForegroundColor Cyan
   $envFile = Join-Path $stage ".env"
   Copy-Item (Join-Path $stage ".env.example") $envFile -Force
   $bytes = New-Object byte[] 48
   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
   $jwt = [Convert]::ToBase64String($bytes)
   $content = Get-Content $envFile
-  $content = $content -replace '^OPENAI_API_KEY=.*', "OPENAI_API_KEY=`"$ApiKey`""
-  $content = $content -replace '^OPENAI_BASE_URL=.*', "OPENAI_BASE_URL=`"$ApiBaseUrl`""
-  $content = $content -replace '^OPENAI_MODEL=.*', "OPENAI_MODEL=`"$ApiModel`""
+  $content = $content -replace '^ZHIPU_API_KEY=.*', "ZHIPU_API_KEY=`"$ApiKey`""
+  $content = $content -replace '^ZHIPU_BASE_URL=.*', "ZHIPU_BASE_URL=`"$ApiBaseUrl`""
+  $content = $content -replace '^ZHIPU_MODEL=.*', "ZHIPU_MODEL=`"$ApiModel`""
   $content = $content -replace '^JWT_SECRET=.*', "JWT_SECRET=`"$jwt`""
-  $content += 'AI_PROVIDER_ORDER="openai"'
+  $content += 'AI_PROVIDER_ORDER="zhipu"'
   $content | Set-Content $envFile -Encoding UTF8
 }
 

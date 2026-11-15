@@ -1,7 +1,7 @@
 /**
  * 多供应商模型网关
  *
- * 支持任意 OpenAI 兼容服务（DeepSeek / 通义千问 / Moonshot / OpenAI / Ollama）。
+ * 支持任意 OpenAI 兼容服务（DeepSeek / 通义千问 / Moonshot / OpenAI / 智谱 GLM / Ollama）。
  * - 通过环境变量启用供应商，`AI_PROVIDER_ORDER` 控制优先级与白名单；
  * - 默认按优先级自动故障转移，可用 `AI_DISABLE_FALLBACK=true` 关闭；
  * - API Key 只在服务端读取，状态接口与健康检查不会返回密钥。
@@ -68,6 +68,15 @@ const PRESETS: ProviderPreset[] = [
     defaultModel: "gpt-4o-mini",
   },
   {
+    id: "zhipu",
+    label: "智谱 GLM",
+    apiKeyEnv: "ZHIPU_API_KEY",
+    baseURLEnv: "ZHIPU_BASE_URL",
+    modelEnv: "ZHIPU_MODEL",
+    defaultBaseURL: "https://open.bigmodel.cn/api/paas/v4",
+    defaultModel: "glm-4-flash",
+  },
+  {
     id: "ollama",
     label: "Ollama 本地",
     apiKeyEnv: "OLLAMA_API_KEY",
@@ -79,18 +88,26 @@ const PRESETS: ProviderPreset[] = [
   },
 ];
 
+/** 兼容历史配置：OPENAI_* 槽位填了 GLM 模型时，显示为智谱 GLM */
+function resolveLabel(preset: ProviderPreset, model: string) {
+  if (preset.id === "openai" && /^glm[-.]/i.test(model)) return "智谱 GLM";
+  return preset.label;
+}
+
 function resolvePreset(preset: ProviderPreset): ModelProvider | null {
   if (preset.requiredEnv && !process.env[preset.requiredEnv]) return null;
 
   const apiKey = process.env[preset.apiKeyEnv] || (preset.id === "ollama" ? "ollama" : "");
   if (!apiKey) return null;
 
+  const model = process.env[preset.modelEnv] || preset.defaultModel;
+
   return {
     id: preset.id,
-    label: preset.label,
+    label: resolveLabel(preset, model),
     baseURL: (preset.baseURLEnv && process.env[preset.baseURLEnv]) || preset.defaultBaseURL,
     apiKey,
-    model: process.env[preset.modelEnv] || preset.defaultModel,
+    model,
   };
 }
 
@@ -174,7 +191,7 @@ export function describeProviders() {
       const resolved = resolvePreset(preset);
       return {
         id: preset.id,
-        label: preset.label,
+        label: resolved?.label ?? preset.label,
         model: resolved?.model ?? process.env[preset.modelEnv] ?? preset.defaultModel,
         baseHost: safeHost(
           resolved?.baseURL ??

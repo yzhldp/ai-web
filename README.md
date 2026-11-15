@@ -50,7 +50,7 @@
 
 ### 多供应商路由与自动故障转移
 
-- 支持 DeepSeek / 通义千问 / Moonshot / OpenAI / Ollama 任意 OpenAI 兼容服务；
+- 支持 DeepSeek / 通义千问 / Moonshot / OpenAI / 智谱 GLM / Ollama 任意 OpenAI 兼容服务；
 - 工具创新 / 创业创新页在「创新合成」按钮下方提供模型选择器，可随时指定优先模型，选择会记住并在下次进入时恢复；
 - 通过环境变量启用供应商，按优先级自动切换；非流式调用遇到超时、报错或非法 JSON 都会切换下一家；
 - 流式生成在首 Token 之前失败可无缝切换，开始输出后不切换，避免内容重复；
@@ -94,7 +94,7 @@
 | 数据库 | SQLite（单文件，零额外服务） |
 | ORM | Prisma |
 | 用户认证 | bcryptjs + jose JWT + HttpOnly Cookie |
-| AI 能力 | Vercel AI SDK + 多供应商（DeepSeek / Qwen / Moonshot / OpenAI / Ollama），自动故障转移 |
+| AI 能力 | Vercel AI SDK + 多供应商（DeepSeek / Qwen / Moonshot / OpenAI / 智谱 GLM / Ollama），自动故障转移 |
 | 结构化输出 | JSON 提示词 + Zod Schema 校验 |
 | 检索 | 自研 BM25 + 稀疏向量混合检索 |
 | 图表 | Mermaid（按需动态加载） |

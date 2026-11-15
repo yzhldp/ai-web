@@ -77,9 +77,20 @@ const FAQS: FaqEntry[] = [
       "方案会自动保存到个人主页；详情页支持导出 Markdown，也可以用「打印 / PDF」另存为 PDF。",
   },
   {
-    keywords: ["模型", "供应商", "切换", "deepseek", "qwen", "通义", "openai", "故障"],
+    keywords: [
+      "模型",
+      "供应商",
+      "切换",
+      "deepseek",
+      "qwen",
+      "通义",
+      "openai",
+      "智谱",
+      "glm",
+      "故障",
+    ],
     answer:
-      "支持 DeepSeek、通义千问、Moonshot、OpenAI、Ollama；主供应商失败会自动切换，并在工作台显示切换次数。",
+      "支持 DeepSeek、通义千问、Moonshot、OpenAI、智谱 GLM、Ollama；主供应商失败会自动切换，并在工作台显示切换次数。",
   },
   {
     keywords: ["架构图", "mermaid", "流程图"],

@@ -13,6 +13,11 @@ const KEYS = [
   "QWEN_MODEL",
   "MOONSHOT_API_KEY",
   "OPENAI_API_KEY",
+  "OPENAI_MODEL",
+  "OPENAI_BASE_URL",
+  "ZHIPU_API_KEY",
+  "ZHIPU_MODEL",
+  "ZHIPU_BASE_URL",
   "OLLAMA_BASE_URL",
   "AI_PROVIDER_ORDER",
   "AI_DISABLE_FALLBACK",
@@ -88,5 +93,33 @@ describe("multi-provider configuration", () => {
     expect(listProviders("openai").map((provider) => provider.id)).toEqual([
       "deepseek",
     ]);
+  });
+
+  it("supports dedicated Zhipu GLM configuration", () => {
+    process.env.ZHIPU_API_KEY = "zhipu-secret";
+    process.env.ZHIPU_MODEL = "glm-4-flash";
+
+    const provider = listProviders()[0];
+    expect(provider.id).toBe("zhipu");
+    expect(provider.label).toBe("智谱 GLM");
+    expect(provider.model).toBe("glm-4-flash");
+  });
+
+  it("labels GLM in the OpenAI-compatible slot as 智谱 GLM", () => {
+    process.env.OPENAI_API_KEY = "zhipu-secret";
+    process.env.OPENAI_MODEL = "glm-4-flash";
+    process.env.OPENAI_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
+
+    const provider = listProviders()[0];
+    expect(provider.id).toBe("openai");
+    expect(provider.label).toBe("智谱 GLM");
+  });
+
+  it("marks Zhipu as enabled in provider status", () => {
+    process.env.ZHIPU_API_KEY = "zhipu-secret";
+    const status = describeProviders();
+    const zhipu = status.providers.find((provider) => provider.id === "zhipu");
+    expect(zhipu?.enabled).toBe(true);
+    expect(status.primaryProvider).toBe("zhipu");
   });
 });

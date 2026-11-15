@@ -4,6 +4,7 @@ export const PROVIDER_IDS = [
   "qwen",
   "moonshot",
   "openai",
+  "zhipu",
   "ollama",
 ] as const;
 

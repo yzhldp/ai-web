@@ -13,6 +13,10 @@ fi
 echo "[entrypoint] 同步数据库表结构..."
 npx prisma db push --skip-generate
 
+# 永久测试账号：与演示数据开关无关，始终确保存在
+echo "[entrypoint] 确保永久测试账号..."
+node prisma/ensure-test-account.mjs || echo "[entrypoint] 测试账号初始化失败，已跳过"
+
 # 初始化演示社区数据（演示用户 / 公开项目 / 评论），可重复执行
 if [ "${SEED_DEMO_DATA:-true}" != "false" ]; then
   echo "[entrypoint] 初始化演示社区数据..."

@@ -8,6 +8,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { TEST_ACCOUNT, ensureTestAccount } from "./test-account.mjs";
 
 const prisma = new PrismaClient();
 
@@ -426,6 +427,8 @@ async function ensureFavorite(data) {
 async function main() {
   const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
 
+  const testAccountCreated = await ensureTestAccount(prisma);
+
   let userCount = 0;
   for (const user of USERS) {
     if (await ensureUser(user, hashedPassword)) userCount += 1;
@@ -453,6 +456,9 @@ async function main() {
 
   console.log(
     `[seed] 演示数据就绪：新增用户 ${userCount}，公开/私有项目 ${planCount}，评论 ${commentCount}，点赞 ${likeCount}，收藏 ${favoriteCount}`
+  );
+  console.log(
+    `[seed] 永久测试账号${testAccountCreated ? "已创建" : "已存在"}：${TEST_ACCOUNT.username} / ${TEST_ACCOUNT.password}`
   );
 }
 

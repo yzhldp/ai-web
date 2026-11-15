@@ -34,6 +34,7 @@ export async function GET(request: Request) {
 
   const comments = await prisma.comment.findMany({
     where: {
+      parentId: null,
       plan: {
         visibility: "public",
         ...(mode ? { mode } : {}),
@@ -41,14 +42,27 @@ export async function GET(request: Request) {
     },
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
+    include: {
       user: { select: { id: true, username: true, nickname: true } },
       plan: { select: { id: true, mode: true } },
+      _count: { select: { likes: true, favorites: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
+      favorites: { where: { userId: user.id }, select: { id: true } },
     },
   });
 
-  return NextResponse.json({ comments });
+  return NextResponse.json({
+    comments: comments.map((comment) => ({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      parentId: comment.parentId,
+      user: comment.user,
+      plan: comment.plan,
+      likeCount: comment._count.likes,
+      favoriteCount: comment._count.favorites,
+      liked: comment.likes.length > 0,
+      favorited: comment.favorites.length > 0,
+    })),
+  });
 }

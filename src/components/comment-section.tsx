@@ -1,9 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Send, MessagesSquare, ArrowRight, Trash2 } from "lucide-react";
+import {
+  Send,
+  MessagesSquare,
+  ArrowRight,
+  Trash2,
+  Heart,
+  Bookmark,
+  Reply,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,11 +20,17 @@ interface CommentItem {
   id: string;
   content: string;
   createdAt: string;
+  parentId?: string | null;
   user: { id: string; username: string; nickname: string | null };
   /** 社区讨论流中附带所属方案信息 */
   plan?: { id: string; mode: string };
   /** 当前用户是否可删除（评论作者或方案作者） */
   canDelete?: boolean;
+  likeCount?: number;
+  favoriteCount?: number;
+  liked?: boolean;
+  favorited?: boolean;
+  replyTo?: { id: string; nickname: string } | null;
 }
 
 /** 格式化时间 */
@@ -35,16 +49,24 @@ function displayName(user: CommentItem["user"]) {
   return user.nickname || user.username;
 }
 
-/** 单条评论：头像与昵称均可跳转到评论者公开主页 */
+interface CommentRowProps {
+  comment: CommentItem;
+  showPlan?: boolean;
+  onDelete?: (comment: CommentItem) => void;
+  onLike?: (comment: CommentItem) => void;
+  onFavorite?: (comment: CommentItem) => void;
+  onReply?: (comment: CommentItem) => void;
+}
+
+/** 单条评论：头像 / 点赞 / 收藏 / 回复 / 删除 */
 function CommentRow({
   comment,
   showPlan = false,
   onDelete,
-}: {
-  comment: CommentItem;
-  showPlan?: boolean;
-  onDelete?: (comment: CommentItem) => void;
-}) {
+  onLike,
+  onFavorite,
+  onReply,
+}: CommentRowProps) {
   return (
     <div className="flex gap-3">
       <Link
@@ -59,7 +81,7 @@ function CommentRow({
           </AvatarFallback>
         </Avatar>
       </Link>
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <Link
             href={`/users/${comment.user.id}`}
@@ -70,19 +92,82 @@ function CommentRow({
           <span className="text-xs text-muted-foreground">
             {formatTime(comment.createdAt)}
           </span>
+        </div>
+        {comment.replyTo && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            回复 @{comment.replyTo.nickname}
+          </p>
+        )}
+        <p className="mt-1 whitespace-pre-wrap text-sm">{comment.content}</p>
+
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => onLike?.(comment)}
+            disabled={!onLike}
+            aria-pressed={comment.liked}
+            aria-label={comment.liked ? "取消点赞" : "点赞"}
+            className={`inline-flex items-center gap-1 transition-colors hover:text-rose-600 ${
+              comment.liked ? "text-rose-600" : ""
+            }`}
+          >
+            <Heart
+              className={`h-3.5 w-3.5 ${comment.liked ? "fill-current" : ""}`}
+            />
+            {comment.likeCount && comment.likeCount > 0
+              ? comment.likeCount
+              : "点赞"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onFavorite?.(comment)}
+            disabled={!onFavorite}
+            aria-pressed={comment.favorited}
+            aria-label={comment.favorited ? "取消收藏" : "收藏"}
+            className={`inline-flex items-center gap-1 transition-colors hover:text-amber-600 ${
+              comment.favorited ? "text-amber-600" : ""
+            }`}
+          >
+            <Bookmark
+              className={`h-3.5 w-3.5 ${comment.favorited ? "fill-current" : ""}`}
+            />
+            {comment.favoriteCount && comment.favoriteCount > 0
+              ? comment.favoriteCount
+              : "收藏"}
+          </button>
+
+          {onReply ? (
+            <button
+              type="button"
+              onClick={() => onReply(comment)}
+              className="inline-flex items-center gap-1 transition-colors hover:text-primary"
+            >
+              <Reply className="h-3.5 w-3.5" />
+              回复
+            </button>
+          ) : showPlan && comment.plan ? (
+            <Link
+              href={`/plans/${comment.plan.id}#comments`}
+              className="inline-flex items-center gap-1 transition-colors hover:text-primary"
+            >
+              <Reply className="h-3.5 w-3.5" />
+              回复
+            </Link>
+          ) : null}
+
           {comment.canDelete && onDelete && (
             <button
               type="button"
               onClick={() => onDelete(comment)}
               aria-label="删除评论"
-              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-destructive"
+              className="ml-auto inline-flex items-center gap-1 transition-colors hover:text-destructive"
             >
               <Trash2 className="h-3 w-3" />
               删除
             </button>
           )}
         </div>
-        <p className="mt-1 whitespace-pre-wrap text-sm">{comment.content}</p>
+
         {showPlan && comment.plan && (
           <Link
             href={`/plans/${comment.plan.id}`}
@@ -100,7 +185,8 @@ function CommentRow({
 
 /**
  * 评论区组件
- * 有方案时展示该方案评论并支持发布；未生成方案时展示对应类别的社区最新讨论。
+ * 有方案时展示该方案评论并支持评论 / 回复 / 点赞 / 收藏 / 删除；
+ * 未生成方案时展示对应类别的社区最新讨论。
  */
 export function CommentSection({
   planId,
@@ -115,6 +201,10 @@ export function CommentSection({
   const [loading, setLoading] = useState(false);
   const [communityLoading, setCommunityLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: string; nickname: string } | null>(
+    null
+  );
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // 方案变化时重新加载该方案评论
   const loadComments = useCallback(async () => {
@@ -155,35 +245,53 @@ export function CommentSection({
     }
   }, [planId, loadComments, loadCommunity]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!planId) {
-      toast.error("请先生成方案后再评论");
-      return;
-    }
-    if (!content.trim()) {
-      toast.error("评论内容不能为空");
-      return;
-    }
-    setSubmitting(true);
+  /** 同步更新方案评论与社区讨论中的同一条评论 */
+  function patchComment(id: string, patch: Partial<CommentItem>) {
+    setComments((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    );
+    setCommunity((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    );
+  }
+
+  async function toggleLike(comment: CommentItem) {
+    const next = !comment.liked;
     try {
-      const res = await fetch("/api/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, content: content.trim() }),
+      const res = await fetch(`/api/comments/${comment.id}/like`, {
+        method: next ? "POST" : "DELETE",
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "评论失败");
+        toast.error(data.error || "操作失败");
         return;
       }
-      setComments((prev) => [...prev, data.comment]);
-      setContent("");
-      toast.success("评论发布成功");
+      patchComment(comment.id, {
+        liked: data.liked,
+        likeCount: data.likeCount,
+      });
     } catch {
       toast.error("网络异常，请重试");
-    } finally {
-      setSubmitting(false);
+    }
+  }
+
+  async function toggleFavorite(comment: CommentItem) {
+    const next = !comment.favorited;
+    try {
+      const res = await fetch(`/api/comments/${comment.id}/favorite`, {
+        method: next ? "POST" : "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "操作失败");
+        return;
+      }
+      patchComment(comment.id, {
+        favorited: data.favorited,
+        favoriteCount: data.favoriteCount,
+      });
+    } catch {
+      toast.error("网络异常，请重试");
     }
   }
 
@@ -199,15 +307,71 @@ export function CommentSection({
         toast.error(data?.error || "删除失败");
         return;
       }
-      setComments((prev) => prev.filter((item) => item.id !== comment.id));
+      setComments((prev) =>
+        prev.filter(
+          (item) => item.id !== comment.id && item.parentId !== comment.id
+        )
+      );
+      setCommunity((prev) => prev.filter((item) => item.id !== comment.id));
       toast.success("评论已删除");
     } catch {
       toast.error("网络异常，请重试");
     }
   }
 
+  /** 点击回复：聚焦输入框并展示回复对象 */
+  function handleReply(comment: CommentItem) {
+    setReplyTo({ id: comment.id, nickname: displayName(comment.user) });
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!planId) {
+      toast.error("请先生成方案后再评论");
+      return;
+    }
+    if (!content.trim()) {
+      toast.error("评论内容不能为空");
+      return;
+    }
+    setSubmitting(true);
+    const isReply = Boolean(replyTo);
+    try {
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId,
+          content: content.trim(),
+          parentId: replyTo?.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "评论失败");
+        return;
+      }
+      setContent("");
+      setReplyTo(null);
+      toast.success(isReply ? "回复已发布" : "评论发布成功");
+      await loadComments();
+    } catch {
+      toast.error("网络异常，请重试");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const rootComments = comments.filter((item) => !item.parentId);
+  const repliesOf = (id: string) =>
+    comments.filter((item) => item.parentId === id);
+
   return (
-    <section className="mt-8 rounded-2xl border bg-white/70 p-6 backdrop-blur">
+    <section
+      id="comments"
+      className="mt-8 rounded-2xl border bg-white/70 p-6 backdrop-blur"
+    >
       <div className="mb-4 flex items-center gap-2">
         <MessagesSquare className="h-5 w-5 text-primary" />
         <h3 className="text-lg font-bold">评论区</h3>
@@ -231,7 +395,13 @@ export function CommentSection({
         ) : (
           <div className="mb-4 space-y-4">
             {community.map((comment) => (
-              <CommentRow key={comment.id} comment={comment} showPlan />
+              <CommentRow
+                key={comment.id}
+                comment={comment}
+                showPlan
+                onLike={toggleLike}
+                onFavorite={toggleFavorite}
+              />
             ))}
           </div>
         )
@@ -244,13 +414,31 @@ export function CommentSection({
           暂无评论，快来发表第一条看法吧
         </p>
       ) : (
-        <div className="mb-4 space-y-4">
-          {comments.map((comment) => (
-            <CommentRow
-              key={comment.id}
-              comment={comment}
-              onDelete={handleDelete}
-            />
+        <div className="mb-4 space-y-5">
+          {rootComments.map((comment) => (
+            <div key={comment.id}>
+              <CommentRow
+                comment={comment}
+                onLike={toggleLike}
+                onFavorite={toggleFavorite}
+                onReply={handleReply}
+                onDelete={handleDelete}
+              />
+              {repliesOf(comment.id).length > 0 && (
+                <div className="mt-3 space-y-4 border-l-2 border-muted pl-4 ml-12">
+                  {repliesOf(comment.id).map((reply) => (
+                    <CommentRow
+                      key={reply.id}
+                      comment={reply}
+                      onLike={toggleLike}
+                      onFavorite={toggleFavorite}
+                      onReply={handleReply}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -258,8 +446,25 @@ export function CommentSection({
       {/* 评论输入：仅方案已生成时展示 */}
       {planId ? (
         <form onSubmit={handleSubmit} className="space-y-3">
+          {replyTo && (
+            <div className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+              <span>正在回复 @{replyTo.nickname}</span>
+              <button
+                type="button"
+                onClick={() => setReplyTo(null)}
+                className="text-primary hover:underline"
+              >
+                取消回复
+              </button>
+            </div>
+          )}
           <Textarea
-            placeholder="分享你的项目，或对方案技术提问（最多 500 字）"
+            ref={textareaRef}
+            placeholder={
+              replyTo
+                ? `回复 @${replyTo.nickname}（最多 500 字）`
+                : "分享你的项目，或对方案技术提问（最多 500 字）"
+            }
             value={content}
             onChange={(e) => setContent(e.target.value)}
             maxLength={500}
@@ -272,7 +477,7 @@ export function CommentSection({
             </span>
             <Button type="submit" disabled={submitting} className="gap-2">
               <Send className="h-4 w-4" />
-              {submitting ? "发布中..." : "发布评论"}
+              {submitting ? "发布中..." : replyTo ? "发布回复" : "发布评论"}
             </Button>
           </div>
         </form>

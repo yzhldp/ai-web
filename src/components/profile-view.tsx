@@ -17,6 +17,8 @@ import {
   Globe,
   Lock,
   ExternalLink,
+  Heart,
+  Bookmark,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,21 @@ interface PlanItem {
   visibility: "public" | "private";
   createdAt: string;
   updatedAt: string;
+}
+
+/** 点赞 / 收藏的评论 */
+interface ReactionItem {
+  id: string;
+  content: string;
+  createdAt: string;
+  reactedAt: string;
+  user: { id: string; username: string; nickname: string | null };
+  plan: { id: string; mode: string; visibility: string };
+  replyTo: string | null;
+  likeCount: number;
+  favoriteCount: number;
+  liked: boolean;
+  favorited: boolean;
 }
 
 /** 截取方案内容预览 */
@@ -84,6 +101,11 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
   const [businessPlans, setBusinessPlans] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 点赞 / 收藏的评论
+  const [likedComments, setLikedComments] = useState<ReactionItem[]>([]);
+  const [favoriteComments, setFavoriteComments] = useState<ReactionItem[]>([]);
+  const [reactionsLoading, setReactionsLoading] = useState(true);
+
   // 详情弹窗
   const [detailPlan, setDetailPlan] = useState<PlanItem | null>(null);
   // 正在切换公开状态的方案 ID
@@ -110,6 +132,28 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
   useEffect(() => {
     loadPlans();
   }, [loadPlans]);
+
+  const loadReactions = useCallback(async () => {
+    setReactionsLoading(true);
+    try {
+      const [likeRes, favoriteRes] = await Promise.all([
+        fetch("/api/profile/reactions?type=like"),
+        fetch("/api/profile/reactions?type=favorite"),
+      ]);
+      const likeData = await likeRes.json();
+      const favoriteData = await favoriteRes.json();
+      if (likeRes.ok) setLikedComments(likeData.items);
+      if (favoriteRes.ok) setFavoriteComments(favoriteData.items);
+    } catch {
+      toast.error("互动内容加载失败");
+    } finally {
+      setReactionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReactions();
+  }, [loadReactions]);
 
   /** 保存昵称 */
   async function handleSaveNickname() {
@@ -318,6 +362,80 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
     );
   }
 
+  function ReactionList({
+    items,
+    type,
+  }: {
+    items: ReactionItem[];
+    type: "like" | "favorite";
+  }) {
+    if (reactionsLoading) {
+      return (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          加载中...
+        </p>
+      );
+    }
+    if (items.length === 0) {
+      return (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          {type === "like"
+            ? "还没有点赞过评论，去社区看看大家的分享吧"
+            : "还没有收藏过评论，看到有用的内容可以点收藏"}
+        </p>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div key={item.id} className="rounded-xl border bg-white p-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Link
+                href={`/users/${item.user.id}`}
+                className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary"
+              >
+                <Avatar className="h-5 w-5">
+                  <AvatarFallback className="text-[10px]">
+                    {(item.user.nickname || item.user.username)
+                      .charAt(0)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {item.user.nickname || item.user.username}
+              </Link>
+              <span>{type === "like" ? "点赞了评论" : "收藏了评论"}</span>
+              <span>·</span>
+              <span>{formatTime(item.reactedAt)}</span>
+            </div>
+            {item.replyTo && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                回复 @{item.replyTo}
+              </p>
+            )}
+            <p className="mt-2 whitespace-pre-wrap text-sm">{item.content}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+              <Link
+                href={`/plans/${item.plan.id}#comments`}
+                className="text-primary hover:underline"
+              >
+                来自：
+                {item.plan.mode === "tool" ? "工具创新" : "创业创新"}方案
+              </Link>
+              <span className="inline-flex items-center gap-1">
+                <Heart className="h-3 w-3" />
+                {item.likeCount}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Bookmark className="h-3 w-3" />
+                {item.favoriteCount}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-24">
       {/* 用户信息区 */}
@@ -379,16 +497,24 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
 
       {/* 方案 Tab 分区 */}
       <Tabs defaultValue="tool">
-        <TabsList className="mb-6 grid w-full max-w-lg grid-cols-3">
-          <TabsTrigger value="tool" className="gap-1">
+        <TabsList className="mb-6 grid w-full max-w-3xl grid-cols-5">
+          <TabsTrigger value="tool" className="gap-1 text-xs sm:text-sm">
             <Wrench className="h-4 w-4" />
             工具创新
           </TabsTrigger>
-          <TabsTrigger value="business" className="gap-1">
+          <TabsTrigger value="business" className="gap-1 text-xs sm:text-sm">
             <Briefcase className="h-4 w-4" />
             创业创新
           </TabsTrigger>
-          <TabsTrigger value="audit" className="gap-1">
+          <TabsTrigger value="likes" className="gap-1 text-xs sm:text-sm">
+            <Heart className="h-4 w-4" />
+            点赞
+          </TabsTrigger>
+          <TabsTrigger value="favorites" className="gap-1 text-xs sm:text-sm">
+            <Bookmark className="h-4 w-4" />
+            收藏
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-1 text-xs sm:text-sm">
             <Activity className="h-4 w-4" />
             AI 审计
           </TabsTrigger>
@@ -398,6 +524,12 @@ export function ProfileView({ initialUser }: { initialUser: UserInfo }) {
         </TabsContent>
         <TabsContent value="business">
           <PlanList plans={businessPlans} />
+        </TabsContent>
+        <TabsContent value="likes">
+          <ReactionList items={likedComments} type="like" />
+        </TabsContent>
+        <TabsContent value="favorites">
+          <ReactionList items={favoriteComments} type="favorite" />
         </TabsContent>
         <TabsContent value="audit">
           <div className="rounded-2xl border bg-white/70 p-5 backdrop-blur">

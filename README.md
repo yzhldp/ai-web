@@ -77,7 +77,7 @@
 - 方案详情支持导出 Markdown、打印 / 另存 PDF
 - 方案自动保存、评论交流、历史方案管理
 - **公开 / 私有项目**：个人主页可一键切换项目可见性；公开项目展示在个人公开主页与首页「社区精选」，并允许其他登录用户浏览与评论
-- **社区化评论区**：预置项目分享与技术问答示例；点击评论者头像即可进入其公开主页查看公开项目
+- **社区化评论区**：支持评论、楼中楼回复、点赞、收藏；个人主页新增「点赞」「收藏」标签，集中查看互动过的评论
 - 可拖拽卡通悬浮助手「创意小蓝」：位置记忆、本地 FAQ、页面跳转；未接入 AI 也可用，接入后自动增强
 - 账号体系：注册 / 登录 / 退出，JWT + HttpOnly Cookie；私有方案与评论仅作者可见，公开方案开放社区交流
 
@@ -276,6 +276,9 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | GET/PATCH/DELETE | `/api/plans/[id]` | 方案详情 / 迭代与公开切换 / 删除（公开方案他人可读） |
 | GET/POST | `/api/comments` | 评论列表 / 发布（公开方案开放，私有方案仅作者） |
 | DELETE | `/api/comments/[id]` | 删除评论（评论作者或方案作者） |
+| POST/DELETE | `/api/comments/[id]/like` | 点赞 / 取消点赞评论 |
+| POST/DELETE | `/api/comments/[id]/favorite` | 收藏 / 取消收藏评论 |
+| GET | `/api/profile/reactions?type=like\|favorite` | 我点赞 / 收藏的评论 |
 | GET | `/api/comments/community` | 公开项目社区最新讨论（支持 `mode=tool|business` 过滤） |
 | GET/POST | `/api/mcp` | MCP 服务发现 / JSON-RPC 2.0 工具调用 |
 

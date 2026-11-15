@@ -7,7 +7,7 @@ import { PlanDiagram } from "@/components/plan-diagram";
 import { QualityReportView } from "@/components/quality-report";
 import { SourceList } from "@/components/source-list";
 import { ExportButtons } from "@/components/export-buttons";
-import { DeleteCommentButton } from "@/components/delete-comment-button";
+import { CommentSection } from "@/components/comment-section";
 import type { QualityReport, SourceRef } from "@/lib/agent/types";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -41,12 +41,6 @@ export default async function PlanDetailPage({
     where: { id: params.id },
     include: {
       user: { select: { id: true, username: true, nickname: true } },
-      comments: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          user: { select: { id: true, username: true, nickname: true } },
-        },
-      },
     },
   });
 
@@ -157,53 +151,11 @@ export default async function PlanDetailPage({
           </div>
         )}
 
-        {/* 评论 */}
-        <div className="mt-8 rounded-2xl border bg-white p-6">
-          <h2 className="mb-4 text-lg font-bold">评论（{plan.comments.length}）</h2>
-          {plan.comments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无评论</p>
-          ) : (
-            <div className="space-y-4">
-              {plan.comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <Link
-                    href={`/users/${comment.user.id}`}
-                    aria-label={`查看 ${
-                      comment.user.nickname || comment.user.username
-                    } 的个人主页`}
-                    title="查看个人主页"
-                    className="shrink-0 rounded-full transition-opacity hover:opacity-80"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                      {(comment.user.nickname || comment.user.username)
-                        .charAt(0)
-                        .toUpperCase()}
-                    </div>
-                  </Link>
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <Link
-                        href={`/users/${comment.user.id}`}
-                        className="text-sm font-semibold hover:text-primary hover:underline"
-                      >
-                        {comment.user.nickname || comment.user.username}
-                      </Link>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(comment.createdAt).toLocaleString("zh-CN")}
-                      </span>
-                      {(comment.user.id === viewer.id || isOwner) && (
-                        <span className="ml-auto">
-                          <DeleteCommentButton commentId={comment.id} />
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm">{comment.content}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* 评论：与工作台复用同一组件，支持回复 / 点赞 / 收藏 */}
+        <CommentSection
+          planId={plan.id}
+          mode={isTool ? "tool" : "business"}
+        />
       </main>
     </div>
   );

@@ -12,6 +12,8 @@ const commentSchema = z.object({
     .trim()
     .min(1, "评论内容不能为空")
     .max(500, "评论不能超过 500 字"),
+  /** 回复的根评论 ID；为空表示发表一级评论 */
+  parentId: z.string().min(1).max(64).optional(),
 });
 
 /** 校验方案存在且当前用户可访问（公开方案所有人可读，私有方案仅作者） */
@@ -28,8 +30,8 @@ async function assertPlanAccess(planId: string, userId: string) {
 }
 
 /**
- * GET /api/comments?planId=xxx —— 获取指定方案的所有评论
- * 公开方案所有登录用户可读；私有方案仅作者可读
+ * GET /api/comments?planId=xxx —— 获取指定方案的全部评论
+ * 返回扁平列表（含 parentId），前端按 parentId 组装一级评论与回复。
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -53,24 +55,50 @@ export async function GET(request: Request) {
     orderBy: { createdAt: "asc" },
     include: {
       user: { select: { id: true, username: true, nickname: true } },
+      parent: {
+        select: {
+          id: true,
+          user: { select: { username: true, nickname: true } },
+        },
+      },
+      _count: { select: { likes: true, favorites: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
+      favorites: { where: { userId: user.id }, select: { id: true } },
     },
   });
 
-  // 标记当前用户可管理的评论，避免前端猜测权限
-  const withPermission = comments.map((comment) => ({
-    ...comment,
+  const normalized = comments.map((comment) => ({
+    id: comment.id,
+    planId: comment.planId,
+    parentId: comment.parentId,
+    content: comment.content,
+    createdAt: comment.createdAt,
+    user: comment.user,
     canDelete: canDeleteComment(
       { commentUserId: comment.userId, planOwnerId: permission.planOwnerId },
       user.id
     ),
+    likeCount: comment._count.likes,
+    favoriteCount: comment._count.favorites,
+    liked: comment.likes.length > 0,
+    favorited: comment.favorites.length > 0,
+    replyTo: comment.replyToName
+      ? { id: comment.parentId ?? comment.id, nickname: comment.replyToName }
+      : comment.parent
+        ? {
+            id: comment.parent.id,
+            nickname:
+              comment.parent.user.nickname || comment.parent.user.username,
+          }
+        : null,
   }));
 
-  return NextResponse.json({ comments: withPermission });
+  return NextResponse.json({ comments: normalized });
 }
 
 /**
- * POST /api/comments —— 发布评论
- * 校验归属、长度与基础内容安全，避免无效数据与 UGC 风险
+ * POST /api/comments —— 发布评论或回复
+ * 校验归属、长度与基础内容安全，避免无效数据与 UGC 风险。
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -93,10 +121,33 @@ export async function POST(request: Request) {
     );
   }
 
-  const { planId, content } = parsed.data;
+  const { planId, content, parentId } = parsed.data;
   const permission = await assertPlanAccess(planId, user.id);
   if (!permission.ok) {
     return NextResponse.json({ error: permission.error }, { status: permission.status });
+  }
+
+  // 只保留一级回复：回复回复时统一挂到根评论下
+  let rootParentId: string | null = null;
+  let replyTo: { id: string; nickname: string } | null = null;
+  if (parentId) {
+    const parent = await prisma.comment.findUnique({
+      where: { id: parentId },
+      select: {
+        id: true,
+        planId: true,
+        parentId: true,
+        user: { select: { username: true, nickname: true } },
+      },
+    });
+    if (!parent || parent.planId !== planId) {
+      return NextResponse.json({ error: "回复的评论不存在" }, { status: 400 });
+    }
+    rootParentId = parent.parentId ?? parent.id;
+    replyTo = {
+      id: parent.id,
+      nickname: parent.user.nickname || parent.user.username,
+    };
   }
 
   const safety = inspectInput([content]);
@@ -111,6 +162,8 @@ export async function POST(request: Request) {
     data: {
       planId,
       userId: user.id,
+      parentId: rootParentId,
+      replyToName: replyTo?.nickname ?? null,
       content,
     },
     include: {
@@ -118,5 +171,15 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ comment: { ...comment, canDelete: true } });
+  return NextResponse.json({
+    comment: {
+      ...comment,
+      canDelete: true,
+      likeCount: 0,
+      favoriteCount: 0,
+      liked: false,
+      favorited: false,
+      replyTo,
+    },
+  });
 }

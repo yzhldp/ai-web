@@ -308,6 +308,65 @@ const COMMENTS = [
       "这个模式可以再加一条「企业团建料理」的 B 端收入线，工作日白天厨房闲置率高，正好用团建活动填补。",
     createdAt: "2026-11-14T11:10:00+08:00",
   },
+  {
+    id: "demo-comment-16",
+    planId: "demo-plan-inspiration",
+    userId: "demo-user-linxiaoman",
+    parentId: "demo-comment-1",
+    content:
+      "回复得很具体。补充一点：卡片合并时可以先做「相似度提示」而不是自动合并，把最终决定权留给用户，体验会更可控。",
+    createdAt: "2026-11-14T12:05:00+08:00",
+  },
+];
+
+/** 演示点赞：让林小满的个人主页有内容可展示 */
+const LIKES = [
+  {
+    id: "demo-like-1",
+    commentId: "demo-comment-4",
+    userId: "demo-user-linxiaoman",
+    createdAt: "2026-11-13T10:00:00+08:00",
+  },
+  {
+    id: "demo-like-2",
+    commentId: "demo-comment-7",
+    userId: "demo-user-linxiaoman",
+    createdAt: "2026-11-13T10:05:00+08:00",
+  },
+  {
+    id: "demo-like-3",
+    commentId: "demo-comment-13",
+    userId: "demo-user-linxiaoman",
+    createdAt: "2026-11-14T10:20:00+08:00",
+  },
+  {
+    id: "demo-like-4",
+    commentId: "demo-comment-1",
+    userId: "demo-user-suqing",
+    createdAt: "2026-11-12T09:30:00+08:00",
+  },
+];
+
+/** 演示收藏：让林小满的个人主页有内容可展示 */
+const FAVORITES = [
+  {
+    id: "demo-favorite-1",
+    commentId: "demo-comment-9",
+    userId: "demo-user-linxiaoman",
+    createdAt: "2026-11-13T12:00:00+08:00",
+  },
+  {
+    id: "demo-favorite-2",
+    commentId: "demo-comment-14",
+    userId: "demo-user-linxiaoman",
+    createdAt: "2026-11-14T11:00:00+08:00",
+  },
+  {
+    id: "demo-favorite-3",
+    commentId: "demo-comment-12",
+    userId: "demo-user-chenyiming",
+    createdAt: "2026-11-13T16:00:00+08:00",
+  },
 ];
 
 async function ensureUser(data, hashedPassword) {
@@ -338,6 +397,32 @@ async function ensureComment(data) {
   return true;
 }
 
+async function ensureLike(data) {
+  const exists = await prisma.commentLike.findUnique({
+    where: {
+      commentId_userId: { commentId: data.commentId, userId: data.userId },
+    },
+  });
+  if (exists) return false;
+  await prisma.commentLike.create({
+    data: { ...data, createdAt: new Date(data.createdAt) },
+  });
+  return true;
+}
+
+async function ensureFavorite(data) {
+  const exists = await prisma.commentFavorite.findUnique({
+    where: {
+      commentId_userId: { commentId: data.commentId, userId: data.userId },
+    },
+  });
+  if (exists) return false;
+  await prisma.commentFavorite.create({
+    data: { ...data, createdAt: new Date(data.createdAt) },
+  });
+  return true;
+}
+
 async function main() {
   const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
 
@@ -356,8 +441,18 @@ async function main() {
     if (await ensureComment(comment)) commentCount += 1;
   }
 
+  let likeCount = 0;
+  for (const like of LIKES) {
+    if (await ensureLike(like)) likeCount += 1;
+  }
+
+  let favoriteCount = 0;
+  for (const favorite of FAVORITES) {
+    if (await ensureFavorite(favorite)) favoriteCount += 1;
+  }
+
   console.log(
-    `[seed] 演示数据就绪：新增用户 ${userCount}，公开/私有项目 ${planCount}，评论 ${commentCount}`
+    `[seed] 演示数据就绪：新增用户 ${userCount}，公开/私有项目 ${planCount}，评论 ${commentCount}，点赞 ${likeCount}，收藏 ${favoriteCount}`
   );
 }
 

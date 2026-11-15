@@ -19,29 +19,31 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  plans     ProjectPlan[]
-  comments  Comment[]
-  auditLogs AiAuditLog[]
+  plans            ProjectPlan[]
+  comments         Comment[]
+  commentLikes     CommentLike[]
+  commentFavorites CommentFavorite[]
+  auditLogs        AiAuditLog[]
 }
 
 /// 项目方案表
 model ProjectPlan {
-  id        String   @id @default(cuid())
-  userId    String // 关联用户
-  mode      String // 类型：tool / business
-  painPoint String // 痛点输入
-  demand    String // 需求输入
-  idea      String // 奇思妙想输入
-  content   String // AI 生成的完整方案内容
+  id         String   @id @default(cuid())
+  userId     String // 关联用户
+  mode       String // 类型：tool / business
+  painPoint  String // 痛点输入
+  demand     String // 需求输入
+  idea       String // 奇思妙想输入
+  content    String // AI 生成的完整方案内容
   // ===== AI 技术补齐新增字段（JSON 字符串，兼容 SQLite）=====
-  analysis  String? // 需求解析结构化结果
-  sources   String? // RAG 检索来源与得分
-  quality   String? // 方案质检报告
-  diagram   String? // Mermaid 架构图源码
-  hasImage  Boolean @default(false) // 是否使用了多模态参考图
-  visibility String @default("private") // 可见性：public 公开（他人可浏览与评论）/ private 私有（仅作者）
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  analysis   String? // 需求解析结构化结果
+  sources    String? // RAG 检索来源与得分
+  quality    String? // 方案质检报告
+  diagram    String? // Mermaid 架构图源码
+  hasImage   Boolean  @default(false) // 是否使用了多模态参考图
+  visibility String   @default("private") // 可见性：public 公开（他人可浏览与评论）/ private 私有（仅作者）
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments Comment[]
@@ -49,14 +51,51 @@ model ProjectPlan {
 
 /// 评论表
 model Comment {
+  id          String   @id @default(cuid())
+  planId      String // 关联方案
+  userId      String // 评论用户
+  parentId    String? // 回复的根评论；为空表示一级评论
+  replyToName String? // 被回复人的昵称，用于展示「回复 @某人」
+  content     String // 评论内容
+  createdAt   DateTime @default(now())
+
+  plan      ProjectPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]         @relation("CommentReplies")
+  likes     CommentLike[]
+  favorites CommentFavorite[]
+
+  @@index([planId, createdAt])
+  @@index([parentId])
+}
+
+/// 评论点赞
+model CommentLike {
   id        String   @id @default(cuid())
-  planId    String // 关联方案
-  userId    String // 评论用户
-  content   String // 评论内容
+  commentId String
+  userId    String
   createdAt DateTime @default(now())
 
-  plan ProjectPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId, createdAt])
+}
+
+/// 评论收藏
+model CommentFavorite {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId, createdAt])
 }
 
 /// AI 调用审计表

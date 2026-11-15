@@ -9,7 +9,7 @@ const DEFAULT_LIMIT = 5;
 /**
  * GET /api/comments/community —— 获取公开项目的最新评论
  * 用于工具 / 创业创新页尚未生成方案时的「社区最新讨论」。
- * 仅返回公开方案下的评论，私有方案评论不会出现在社区流中。
+ * 支持 mode=tool|business 按方案类别过滤；仅返回公开方案下的评论。
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -23,8 +23,22 @@ export async function GET(request: Request) {
     ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_LIMIT)
     : DEFAULT_LIMIT;
 
+  const rawMode = searchParams.get("mode");
+  if (rawMode && rawMode !== "tool" && rawMode !== "business") {
+    return NextResponse.json(
+      { error: "mode 仅支持 tool 或 business" },
+      { status: 400 }
+    );
+  }
+  const mode = rawMode === "tool" || rawMode === "business" ? rawMode : undefined;
+
   const comments = await prisma.comment.findMany({
-    where: { plan: { visibility: "public" } },
+    where: {
+      plan: {
+        visibility: "public",
+        ...(mode ? { mode } : {}),
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {

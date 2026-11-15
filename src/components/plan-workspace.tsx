@@ -782,7 +782,7 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
       </div>
 
       {/* 评论区 */}
-      <CommentSection planId={planId} />
+      <CommentSection planId={planId} mode={mode} />
     </div>
   );
 }

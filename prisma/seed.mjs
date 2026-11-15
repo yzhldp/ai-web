@@ -284,6 +284,30 @@ const COMMENTS = [
       "@陈一鸣 预约冲突用轮询就够了，异常上报准备走 WebSocket + 失败重连，超时未处理再落库补偿。网络不稳定时降级为定时拉取，保证消息最终可达。",
     createdAt: "2026-11-13T15:48:00+08:00",
   },
+  {
+    id: "demo-comment-13",
+    planId: "demo-plan-kitchen",
+    userId: "demo-user-chenyiming",
+    content:
+      "分享一个我做过的校园团购项目：最难的是获客，前三个月基本靠社群。想请教共享厨房的单店获客成本准备怎么估算？",
+    createdAt: "2026-11-14T10:05:00+08:00",
+  },
+  {
+    id: "demo-comment-14",
+    planId: "demo-plan-kitchen",
+    userId: "demo-user-suqing",
+    content:
+      "@陈一鸣 我们按「周边 1.5 公里 + 社区活动」估算，首批通过物业合作和周末料理体验课获客，单个会员的获客成本控制在 30 元以内，再用月卡提高复购。",
+    createdAt: "2026-11-14T10:32:00+08:00",
+  },
+  {
+    id: "demo-comment-15",
+    planId: "demo-plan-kitchen",
+    userId: "demo-user-linxiaoman",
+    content:
+      "这个模式可以再加一条「企业团建料理」的 B 端收入线，工作日白天厨房闲置率高，正好用团建活动填补。",
+    createdAt: "2026-11-14T11:10:00+08:00",
+  },
 ];
 
 async function ensureUser(data, hashedPassword) {

@@ -100,9 +100,15 @@ function CommentRow({
 
 /**
  * 评论区组件
- * 有方案时展示该方案评论并支持发布；未生成方案时展示公开项目的社区最新讨论。
+ * 有方案时展示该方案评论并支持发布；未生成方案时展示对应类别的社区最新讨论。
  */
-export function CommentSection({ planId }: { planId: string | null }) {
+export function CommentSection({
+  planId,
+  mode,
+}: {
+  planId: string | null;
+  mode?: "tool" | "business";
+}) {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [community, setCommunity] = useState<CommentItem[]>([]);
   const [content, setContent] = useState("");
@@ -125,11 +131,13 @@ export function CommentSection({ planId }: { planId: string | null }) {
     }
   }, [planId]);
 
-  // 未生成方案时加载公开项目的社区最新讨论
+  // 未生成方案时加载当前类别公开项目的社区最新讨论
   const loadCommunity = useCallback(async () => {
     setCommunityLoading(true);
     try {
-      const res = await fetch("/api/comments/community?limit=5");
+      const query = new URLSearchParams({ limit: "5" });
+      if (mode) query.set("mode", mode);
+      const res = await fetch(`/api/comments/community?${query.toString()}`);
       const data = await res.json();
       if (res.ok) setCommunity(data.comments);
     } catch {
@@ -137,7 +145,7 @@ export function CommentSection({ planId }: { planId: string | null }) {
     } finally {
       setCommunityLoading(false);
     }
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     if (planId) {

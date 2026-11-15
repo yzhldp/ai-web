@@ -264,7 +264,7 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | GET/PATCH/DELETE | `/api/plans/[id]` | 方案详情 / 迭代与公开切换 / 删除（公开方案他人可读） |
 | GET/POST | `/api/comments` | 评论列表 / 发布（公开方案开放，私有方案仅作者） |
 | DELETE | `/api/comments/[id]` | 删除评论（评论作者或方案作者） |
-| GET | `/api/comments/community` | 公开项目社区最新讨论 |
+| GET | `/api/comments/community` | 公开项目社区最新讨论（支持 `mode=tool|business` 过滤） |
 | GET/POST | `/api/mcp` | MCP 服务发现 / JSON-RPC 2.0 工具调用 |
 
 SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `src/lib/agent/types.ts`。

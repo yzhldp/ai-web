@@ -1,18 +1,23 @@
 # ===== 构建阶段 =====
 FROM node:20-alpine AS base
-# Prisma 需 OpenSSL 识别运行时平台；su-exec 用于启动时修正数据卷权限后降权
-RUN apk add --no-cache openssl su-exec \
-  && corepack enable && corepack prepare pnpm@10.5.2 --activate
-ENV NEXT_TELEMETRY_DISABLED=1
+# 国内构建加速：Alpine 源、npm 源与 Prisma 引擎镜像均可通过构建参数覆盖
+ARG APK_MIRROR=https://mirrors.aliyun.com/alpine
+RUN sed -i "s#https://dl-cdn.alpinelinux.org/alpine#${APK_MIRROR}#g" /etc/apk/repositories \
+  && apk add --no-cache openssl su-exec
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com \
+    PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma \
+    NEXT_TELEMETRY_DISABLED=1
+RUN corepack enable && corepack prepare pnpm@10.5.2 --activate
 
 # 依赖安装阶段
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 # 先复制 Prisma Schema，便于安装后生成客户端与查询引擎
 COPY prisma ./prisma
-# 忽略构建脚本，避免项目 postinstall 在依赖阶段执行；随后显式生成
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# 复用 pnpm 存储缓存，重复构建无需重新下载依赖
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
 RUN pnpm exec prisma generate
 
 # 构建阶段
@@ -22,8 +27,8 @@ WORKDIR /app
 ENV DATABASE_URL="file:/tmp/build.db"
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# 显式生成 Prisma Client 并执行生产构建
-RUN pnpm exec prisma generate && pnpm build
+# 复用 Next.js 编译缓存，二次构建更快
+RUN --mount=type=cache,id=next-cache,target=/app/.next/cache pnpm build
 
 # ===== 运行阶段 =====
 FROM base AS runner

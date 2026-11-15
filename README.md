@@ -356,7 +356,6 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 - [06 测试与部署](docs/06-测试与部署.md)
 - [07 创新点说明](docs/07-创新点说明.md)
 - [08 总结与展望](docs/08-总结与展望.md)
-- [09 免费部署上线一个月方案](docs/09-免费部署上线一个月方案.md)
 - [10 评审标准对标说明](docs/10-评审对标说明.md)
 - [11 评审体验指南](docs/11-评审体验指南.md)
 - [12 MCP 接入说明](docs/12-MCP接入说明.md)

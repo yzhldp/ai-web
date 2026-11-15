@@ -12,7 +12,8 @@ export function hasVisionModel() {
     process.env.VISION_MODEL &&
       (process.env.VISION_API_KEY ||
         process.env.DASHSCOPE_API_KEY ||
-        process.env.OPENAI_API_KEY ||
+        process.env.ZHIPU_API_KEY ||
+        process.env.SILICONFLOW_API_KEY ||
         process.env.DEEPSEEK_API_KEY ||
         process.env.OLLAMA_BASE_URL)
   );
@@ -20,18 +21,29 @@ export function hasVisionModel() {
 
 /**
  * 多模态视觉模型
- * 优先使用 VISION_* 配置；未单独配置时复用当前主供应商的地址与密钥。
+ * 优先使用 VISION_* 配置；未单独配置时优先复用通义千问 / 智谱 GLM 的视觉模型。
  */
 export function getVisionModel() {
   const primary = getPrimaryProvider();
+  const dashscopeKey = process.env.DASHSCOPE_API_KEY;
+  const zhipuKey = process.env.ZHIPU_API_KEY;
+
+  const useDashscope = Boolean(dashscopeKey);
+  const defaultBaseURL = useDashscope
+    ? "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    : zhipuKey
+      ? process.env.ZHIPU_BASE_URL || "https://open.bigmodel.cn/api/paas/v4"
+      : primary?.baseURL || "https://api.deepseek.com";
+  const defaultModel = useDashscope ? "qwen-vl-plus" : "glm-4v-flash";
+
   const provider = createOpenAI({
-    apiKey: process.env.VISION_API_KEY || primary?.apiKey,
-    baseURL:
-      process.env.VISION_BASE_URL ||
-      primary?.baseURL ||
-      "https://api.deepseek.com",
+    apiKey:
+      process.env.VISION_API_KEY ||
+      (useDashscope ? dashscopeKey : zhipuKey) ||
+      primary?.apiKey,
+    baseURL: process.env.VISION_BASE_URL || defaultBaseURL,
   });
-  return provider(process.env.VISION_MODEL || "gpt-4o-mini");
+  return provider(process.env.VISION_MODEL || defaultModel);
 }
 
 /** 方案末尾统一标注 */

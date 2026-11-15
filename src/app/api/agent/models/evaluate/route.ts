@@ -34,7 +34,7 @@ export async function POST() {
     return NextResponse.json(
       {
         error:
-          "未配置任何模型供应商，请设置 DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / MOONSHOT_API_KEY / OPENAI_API_KEY 之一",
+          "未配置任何模型供应商，请设置 DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / ZHIPU_API_KEY 等国内平台密钥之一",
       },
       { status: 400 }
     );

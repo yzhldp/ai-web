@@ -336,7 +336,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
   // 无任何供应商配置时立即失败，避免请求长时间挂起
   if (!listProviders().length) {
     throw new Error(
-      "未配置任何模型供应商，请在环境变量中设置 DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / MOONSHOT_API_KEY / OPENAI_API_KEY 之一"
+      "未配置任何模型供应商，请在环境变量中设置 DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / ZHIPU_API_KEY 等国内平台密钥之一"
     );
   }
 

@@ -11,13 +11,25 @@ const KEYS = [
   "DEEPSEEK_BASE_URL",
   "DASHSCOPE_API_KEY",
   "QWEN_MODEL",
-  "MOONSHOT_API_KEY",
-  "OPENAI_API_KEY",
-  "OPENAI_MODEL",
-  "OPENAI_BASE_URL",
   "ZHIPU_API_KEY",
   "ZHIPU_MODEL",
   "ZHIPU_BASE_URL",
+  "MOONSHOT_API_KEY",
+  "DOUBAO_API_KEY",
+  "DOUBAO_MODEL",
+  "DOUBAO_BASE_URL",
+  "QIANFAN_API_KEY",
+  "HUNYUAN_API_KEY",
+  "SPARK_API_KEY",
+  "MINIMAX_API_KEY",
+  "STEPFUN_API_KEY",
+  "YI_API_KEY",
+  "BAICHUAN_API_KEY",
+  "SENSENOVA_API_KEY",
+  "SILICONFLOW_API_KEY",
+  "CUSTOM_API_KEY",
+  "CUSTOM_BASE_URL",
+  "CUSTOM_MODEL",
   "OLLAMA_BASE_URL",
   "AI_PROVIDER_ORDER",
   "AI_DISABLE_FALLBACK",
@@ -90,7 +102,7 @@ describe("multi-provider configuration", () => {
 
   it("keeps the default order when the selected provider is unavailable", () => {
     process.env.DEEPSEEK_API_KEY = "deepseek-secret";
-    expect(listProviders("openai").map((provider) => provider.id)).toEqual([
+    expect(listProviders("qianfan").map((provider) => provider.id)).toEqual([
       "deepseek",
     ]);
   });
@@ -105,14 +117,26 @@ describe("multi-provider configuration", () => {
     expect(provider.model).toBe("glm-4-flash");
   });
 
-  it("labels GLM in the OpenAI-compatible slot as 智谱 GLM", () => {
-    process.env.OPENAI_API_KEY = "zhipu-secret";
-    process.env.OPENAI_MODEL = "glm-4-flash";
-    process.env.OPENAI_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
+  it("supports Doubao through Volcengine Ark", () => {
+    process.env.DOUBAO_API_KEY = "doubao-secret";
+    process.env.DOUBAO_MODEL = "doubao-1-5-pro-32k-250115";
 
     const provider = listProviders()[0];
-    expect(provider.id).toBe("openai");
-    expect(provider.label).toBe("智谱 GLM");
+    expect(provider.id).toBe("doubao");
+    expect(provider.label).toBe("豆包（火山方舟）");
+    expect(provider.model).toBe("doubao-1-5-pro-32k-250115");
+  });
+
+  it("requires a base URL for the custom compatible provider", () => {
+    process.env.CUSTOM_API_KEY = "custom-secret";
+    expect(listProviders()).toEqual([]);
+
+    process.env.CUSTOM_BASE_URL = "https://api.example.cn/v1";
+    process.env.CUSTOM_MODEL = "my-model";
+    const provider = listProviders()[0];
+    expect(provider.id).toBe("custom");
+    expect(provider.label).toBe("自定义兼容");
+    expect(provider.model).toBe("my-model");
   });
 
   it("marks Zhipu as enabled in provider status", () => {

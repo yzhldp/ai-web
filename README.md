@@ -50,7 +50,7 @@
 
 ### 多供应商路由与自动故障转移
 
-- 支持 DeepSeek / 通义千问 / Moonshot / OpenAI / 智谱 GLM / Ollama 任意 OpenAI 兼容服务；
+- 支持 DeepSeek / 通义千问 / 智谱 GLM / Kimi / 豆包 / 文心一言 / 腾讯混元 / 讯飞星火 / MiniMax / 阶跃星辰 / 零一万物 / 百川 / 商汤 / 硅基流动等国内主流平台，以及自定义 OpenAI 兼容服务与本地 Ollama；
 - 工具创新 / 创业创新页在「创新合成」按钮下方提供模型选择器，可随时指定优先模型，选择会记住并在下次进入时恢复；
 - 通过环境变量启用供应商，按优先级自动切换；非流式调用遇到超时、报错或非法 JSON 都会切换下一家；
 - 流式生成在首 Token 之前失败可无缝切换，开始输出后不切换，避免内容重复；
@@ -94,7 +94,7 @@
 | 数据库 | SQLite（单文件，零额外服务） |
 | ORM | Prisma |
 | 用户认证 | bcryptjs + jose JWT + HttpOnly Cookie |
-| AI 能力 | Vercel AI SDK + 多供应商（DeepSeek / Qwen / Moonshot / OpenAI / 智谱 GLM / Ollama），自动故障转移 |
+| AI 能力 | Vercel AI SDK + 国内主流多供应商（DeepSeek / 通义千问 / 智谱 GLM / Kimi / 豆包 / 文心一言 / 混元 / 星火 / MiniMax / 阶跃 / 零一万物 / 百川 / 商汤 / 硅基流动），自动故障转移 |
 | 结构化输出 | JSON 提示词 + Zod Schema 校验 |
 | 检索 | 自研 BM25 + 稀疏向量混合检索 |
 | 图表 | Mermaid（按需动态加载） |
@@ -232,16 +232,27 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | --- | --- | --- | --- |
 | `DATABASE_URL` | 是 | SQLite 文件路径（Docker 内为 `/app/data/prod.db`） | `file:./dev.db` |
 | `DEEPSEEK_API_KEY` | 否* | DeepSeek 密钥（默认主供应商） | 在 platform.deepseek.com 申请 |
-| `DASHSCOPE_API_KEY` | 否* | 通义千问密钥 | 阿里云 DashScope |
-| `MOONSHOT_API_KEY` | 否* | Moonshot 密钥 | — |
-| `OPENAI_API_KEY` | 否* | OpenAI 密钥 | — |
+| `DASHSCOPE_API_KEY` | 否* | 通义千问密钥 | 阿里云百炼 / DashScope |
+| `ZHIPU_API_KEY` | 否* | 智谱 GLM 密钥（GLM-4-Flash 免费） | open.bigmodel.cn |
+| `MOONSHOT_API_KEY` | 否* | Kimi（Moonshot）密钥 | platform.moonshot.cn |
+| `DOUBAO_API_KEY` | 否* | 豆包 / 火山方舟密钥 | 火山方舟控制台 |
+| `QIANFAN_API_KEY` | 否* | 文心一言 / 百度千帆密钥 | 百度智能云千帆 |
+| `HUNYUAN_API_KEY` | 否* | 腾讯混元密钥 | 腾讯云控制台 |
+| `SPARK_API_KEY` | 否* | 讯飞星火密钥 | 讯飞开放平台 |
+| `MINIMAX_API_KEY` | 否* | MiniMax 密钥 | platform.minimaxi.com |
+| `STEPFUN_API_KEY` | 否* | 阶跃星辰密钥 | platform.stepfun.com |
+| `YI_API_KEY` | 否* | 零一万物密钥 | platform.lingyiwanwu.com |
+| `BAICHUAN_API_KEY` | 否* | 百川智能密钥 | platform.baichuan-ai.com |
+| `SENSENOVA_API_KEY` | 否* | 商汤日日新密钥 | platform.sensenova.cn |
+| `SILICONFLOW_API_KEY` | 否* | 硅基流动密钥（聚合多种模型） | cloud.siliconflow.cn |
+| `CUSTOM_API_KEY` / `CUSTOM_BASE_URL` | 否* | 自定义 OpenAI 兼容平台 | 需同时填写地址与模型 |
 | `OLLAMA_BASE_URL` | 否* | 本地 Ollama 地址，填写即启用 | `http://host.docker.internal:11434/v1` |
-| `AI_PROVIDER_ORDER` | 否 | 供应商优先级与白名单，逗号分隔 | `deepseek,qwen,openai` |
+| `AI_PROVIDER_ORDER` | 否 | 供应商优先级与白名单，逗号分隔 | `deepseek,qwen,zhipu,moonshot` |
 | `AI_DISABLE_FALLBACK` | 否 | 关闭自动切换，仅用第一个供应商 | `true` / `false` |
 | `TAVILY_API_KEY` | 否 | 联网搜索工具密钥（启用 `web_search`） | 在 tavily.com 申请 |
 | `JWT_SECRET` | 是 | JWT 签名密钥（生产务必修改） | `openssl rand -base64 48` |
-| `VISION_MODEL` | 否 | 视觉模型名称，用于参考图理解 | `qwen-vl-max` / `gpt-4o-mini` |
-| `VISION_BASE_URL` | 否 | 视觉模型 OpenAI 兼容地址 | — |
+| `VISION_MODEL` | 否 | 视觉模型名称，用于参考图理解 | `qwen-vl-max` / `glm-4v-flash` |
+| `VISION_BASE_URL` | 否 | 视觉模型兼容地址 | — |
 | `VISION_API_KEY` | 否 | 视觉模型密钥（默认复用供应商密钥） | — |
 
 > \* 至少配置一个文本模型供应商。未配置视觉模型时，图片输入自动降级，文本生成与架构图不受影响。

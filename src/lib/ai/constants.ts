@@ -2,9 +2,19 @@
 export const PROVIDER_IDS = [
   "deepseek",
   "qwen",
-  "moonshot",
-  "openai",
   "zhipu",
+  "moonshot",
+  "doubao",
+  "qianfan",
+  "hunyuan",
+  "spark",
+  "minimax",
+  "stepfun",
+  "yi",
+  "baichuan",
+  "sensenova",
+  "siliconflow",
+  "custom",
   "ollama",
 ] as const;
 

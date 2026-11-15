@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { AGENT_PROVIDER_IDS } from "@/lib/ai/constants";
 
 /** Agent 生成请求 */
 export const agentRequestSchema = z.object({
   mode: z.enum(["tool", "business"]),
   action: z.enum(["generate", "iterate"]).default("generate"),
+  /** 用户选择的优先模型供应商（auto 表示自动路由） */
+  preferredProvider: z.enum(AGENT_PROVIDER_IDS).default("auto"),
   painPoint: z.string().max(4000, "痛点描述不能超过 4000 字").default(""),
   demand: z.string().max(4000, "需求描述不能超过 4000 字").default(""),
   idea: z.string().max(4000, "奇思妙想不能超过 4000 字").default(""),

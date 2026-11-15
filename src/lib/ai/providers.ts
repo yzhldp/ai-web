@@ -94,22 +94,35 @@ function resolvePreset(preset: ProviderPreset): ModelProvider | null {
   };
 }
 
-/** 已配置且按优先级排序的供应商候选列表 */
-export function listProviders(): ModelProvider[] {
+/** 已配置且通过白名单过滤的供应商（不按「关闭故障转移」截断） */
+export function listEnabledProviders(): ModelProvider[] {
   const all = PRESETS.map(resolvePreset).filter((item): item is ModelProvider => Boolean(item));
 
   const orderValue = process.env.AI_PROVIDER_ORDER?.trim();
-  let ordered = all;
+  if (!orderValue) return all;
 
-  if (orderValue) {
-    // 配置了顺序时同时作为白名单：未列出的供应商不参与调用
-    const ids = orderValue
-      .split(",")
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
-    ordered = ids
-      .map((id) => all.find((provider) => provider.id === id))
-      .filter((item): item is ModelProvider => Boolean(item));
+  // 配置了顺序时同时作为白名单：未列出的供应商不参与调用
+  const ids = orderValue
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return ids
+    .map((id) => all.find((provider) => provider.id === id))
+    .filter((item): item is ModelProvider => Boolean(item));
+}
+
+/**
+ * 已配置且按优先级排序的供应商候选列表
+ * @param preferred 用户指定的优先供应商；配置有效时排到第一位
+ */
+export function listProviders(preferred?: string): ModelProvider[] {
+  let ordered = listEnabledProviders();
+
+  if (preferred && preferred !== "auto") {
+    const chosen = ordered.find((provider) => provider.id === preferred);
+    if (chosen) {
+      ordered = [chosen, ...ordered.filter((provider) => provider.id !== chosen.id)];
+    }
   }
 
   if (process.env.AI_DISABLE_FALLBACK === "true") {
@@ -148,13 +161,15 @@ function safeHost(baseURL: string) {
 
 /** 供应商状态（脱敏，不包含 API Key） */
 export function describeProviders() {
+  const enabled = listEnabledProviders();
   const active = listProviders();
+  const enabledIds = new Set(enabled.map((provider) => provider.id));
   const activeIds = new Set(active.map((provider) => provider.id));
 
   return {
     fallbackEnabled: isFallbackEnabled(),
     primaryProvider: active[0]?.id ?? null,
-    configuredCount: active.length,
+    configuredCount: enabled.length,
     providers: PRESETS.map((preset) => {
       const resolved = resolvePreset(preset);
       return {
@@ -167,6 +182,8 @@ export function describeProviders() {
             preset.defaultBaseURL
         ),
         configured: Boolean(resolved),
+        /** 是否已配置且通过供应商白名单，可供用户选择 */
+        enabled: enabledIds.has(preset.id),
         active: activeIds.has(preset.id),
         primary: active[0]?.id === preset.id,
       };

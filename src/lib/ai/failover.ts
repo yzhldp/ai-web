@@ -58,6 +58,8 @@ interface BaseOptions {
   timeoutMs?: number;
   maxRetries?: number;
   signal?: AbortSignal;
+  /** 用户指定的优先供应商（auto / undefined 表示按服务器优先级） */
+  preferredProvider?: string;
   onProvider?: (provider: ModelProvider, fallbacks: number) => void;
   onFailure?: (attempt: ProviderAttempt) => void;
 }
@@ -107,8 +109,8 @@ function normalizeUsage(usage?: Partial<LanguageModelUsage> | null): LanguageMod
   };
 }
 
-function ensureProviders(): ModelProvider[] {
-  const providers = listProviders();
+function ensureProviders(preferredProvider?: string): ModelProvider[] {
+  const providers = listProviders(preferredProvider);
   if (!providers.length) {
     throw new Error(
       "未配置任何可用的模型供应商，请在环境变量中设置 DEEPSEEK_API_KEY / DASHSCOPE_API_KEY / MOONSHOT_API_KEY / OPENAI_API_KEY 之一"
@@ -153,7 +155,7 @@ function buildAttempt(
 export async function generateTextWithFailover(
   options: TextOptions
 ): Promise<FailoverResult<string>> {
-  const providers = ensureProviders();
+  const providers = ensureProviders(options.preferredProvider);
   const attempts: ProviderAttempt[] = [];
   let lastError = "未知错误";
 
@@ -209,7 +211,7 @@ export async function generateTextWithFailover(
 export async function generateJSONWithFailover<T>(
   options: BaseOptions & { schema: z.ZodType<T>; timeoutMs?: number }
 ): Promise<FailoverResult<T>> {
-  const providers = ensureProviders();
+  const providers = ensureProviders(options.preferredProvider);
   const attempts: ProviderAttempt[] = [];
   let lastError = "未知错误";
 
@@ -263,7 +265,7 @@ export async function generateJSONWithFailover<T>(
 export async function streamTextWithFailover(
   options: StreamOptions
 ): Promise<FailoverResult<string>> {
-  const providers = ensureProviders();
+  const providers = ensureProviders(options.preferredProvider);
   const attempts: ProviderAttempt[] = [];
   let lastError = "未知错误";
 

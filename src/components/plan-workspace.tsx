@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   BookOpen,
   Database,
+  Cpu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +46,17 @@ import type {
 } from "@/lib/agent/types";
 
 export type PlanMode = "tool" | "business";
+
+/** 模型供应商状态（来自 /api/agent/models） */
+interface ProviderOption {
+  id: string;
+  label: string;
+  model: string;
+  configured: boolean;
+  enabled: boolean;
+  active: boolean;
+  primary: boolean;
+}
 
 /** 模式配置 */
 const MODE_CONFIG = {
@@ -91,6 +103,11 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
   const [image, setImage] = useState<string | null>(null);
   const [deep, setDeep] = useState(true);
 
+  // 模型选择：auto 表示按服务器优先级自动路由
+  const [providerChoice, setProviderChoice] = useState("auto");
+  const [providers, setProviders] = useState<ProviderOption[]>([]);
+  const [fallbackEnabled, setFallbackEnabled] = useState(true);
+
   // 输出
   const [content, setContent] = useState("");
   const [stages, setStages] = useState<StageView[]>(createInitialStages);
@@ -125,6 +142,52 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
   useEffect(() => {
     planIdRef.current = planId;
   }, [planId]);
+
+  // 加载可用模型列表，并恢复上次选择
+  useEffect(() => {
+    let cancelled = false;
+    const saved =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("agent-provider")
+        : null;
+    if (saved) setProviderChoice(saved);
+
+    fetch("/api/agent/models")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list: ProviderOption[] = Array.isArray(data.providers)
+          ? data.providers
+          : [];
+        setProviders(list);
+        setFallbackEnabled(Boolean(data.fallbackEnabled));
+        // 上次选择的模型已被移除或停用时回到自动模式
+        if (
+          saved &&
+          saved !== "auto" &&
+          !list.some((item) => item.id === saved && item.enabled)
+        ) {
+          setProviderChoice("auto");
+        }
+      })
+      .catch(() => {
+        // 模型状态加载失败不影响生成，按服务端自动路由
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** 保存用户选择的模型，便于下次进入页面继续使用 */
+  function handleProviderChange(value: string) {
+    setProviderChoice(value);
+    try {
+      window.localStorage.setItem("agent-provider", value);
+    } catch {
+      // 隐私模式下 localStorage 可能不可用
+    }
+  }
 
   const flushContent = useCallback(() => {
     if (flushTimerRef.current) {
@@ -367,6 +430,7 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
           context: params.context ?? "",
           deep,
           image: isIterate ? null : image,
+          preferredProvider: providerChoice,
         }),
       });
 
@@ -621,6 +685,59 @@ export function PlanWorkspace({ mode }: { mode: PlanMode }) {
                 </>
               )}
             </Button>
+
+            {/* AI 大模型选择：生成前可随时切换 */}
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <label
+                  htmlFor={`model-select-${mode}`}
+                  className="flex items-center gap-1.5 text-sm font-medium"
+                >
+                  <Cpu className="h-4 w-4 text-primary" />
+                  AI 大模型
+                </label>
+                <span className="text-[10px] text-muted-foreground">
+                  {generating ? "生成中不可切换" : "可随时切换"}
+                </span>
+              </div>
+              <select
+                id={`model-select-${mode}`}
+                value={providerChoice}
+                onChange={(e) => handleProviderChange(e.target.value)}
+                disabled={generating}
+                aria-label="选择 AI 大模型"
+                className="mt-2 w-full rounded-md border bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="auto">
+                  自动选择（推荐
+                  {fallbackEnabled ? "，失败自动切换" : ""}）
+                </option>
+                {providers.map((provider) => (
+                  <option
+                    key={provider.id}
+                    value={provider.id}
+                    disabled={!provider.enabled}
+                  >
+                    {provider.label} · {provider.model}
+                    {!provider.enabled
+                      ? "（未配置）"
+                      : provider.primary
+                        ? "（默认）"
+                        : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                {providers.filter((provider) => provider.enabled).length === 0
+                  ? "尚未配置可用模型，请设置 DEEPSEEK_API_KEY 等环境变量后再生成。"
+                  : providerChoice === "auto"
+                    ? "按服务器优先级自动选择，调用失败时自动切换下一家。"
+                    : `优先使用 ${
+                        providers.find((item) => item.id === providerChoice)
+                          ?.label ?? providerChoice
+                      }，${fallbackEnabled ? "失败时自动切换其他模型" : "已关闭自动切换"}。`}
+              </p>
+            </div>
 
             <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
               {["Agent 工作流", "RAG 引用", "Function Calling", "多模态", "内容安全"].map(

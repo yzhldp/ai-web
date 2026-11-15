@@ -135,6 +135,7 @@ export async function POST(request: Request) {
           context: input.context,
           deep: input.deep,
           imageDataUrl: input.image ?? null,
+          preferredProvider: input.preferredProvider,
           signal: abortController.signal,
           emit: send,
         });

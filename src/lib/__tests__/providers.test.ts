@@ -59,4 +59,34 @@ describe("multi-provider configuration", () => {
   it("returns an empty list when nothing is configured", () => {
     expect(listProviders()).toEqual([]);
   });
+
+  it("moves the user-selected provider to the front", () => {
+    process.env.DEEPSEEK_API_KEY = "deepseek-secret";
+    process.env.DASHSCOPE_API_KEY = "qwen-secret";
+    process.env.MOONSHOT_API_KEY = "moonshot-secret";
+    process.env.AI_PROVIDER_ORDER = "deepseek,qwen,moonshot";
+
+    expect(listProviders("moonshot").map((provider) => provider.id)).toEqual([
+      "moonshot",
+      "deepseek",
+      "qwen",
+    ]);
+  });
+
+  it("uses only the selected provider when fallback is disabled", () => {
+    process.env.DEEPSEEK_API_KEY = "deepseek-secret";
+    process.env.DASHSCOPE_API_KEY = "qwen-secret";
+    process.env.AI_DISABLE_FALLBACK = "true";
+
+    expect(listProviders("qwen").map((provider) => provider.id)).toEqual([
+      "qwen",
+    ]);
+  });
+
+  it("keeps the default order when the selected provider is unavailable", () => {
+    process.env.DEEPSEEK_API_KEY = "deepseek-secret";
+    expect(listProviders("openai").map((provider) => provider.id)).toEqual([
+      "deepseek",
+    ]);
+  });
 });

@@ -66,6 +66,8 @@ export interface RunAgentInput {
   instruction?: string;
   /** 迭代所基于的当前方案全文 */
   context?: string;
+  /** 用户指定的优先供应商（auto 表示自动选择） */
+  preferredProvider?: string;
   emit: (event: AgentEvent) => void;
 }
 
@@ -197,6 +199,7 @@ async function analyzeRequirements(
       temperature: 0.2,
       timeoutMs: 45000,
       signal: input.signal,
+      preferredProvider: input.preferredProvider,
       prompt: `${buildAnalysisPrompt({ ...input, imageInsight })}
 
 只输出一个 JSON 对象，不要输出解释、Markdown 代码围栏或其他文字。JSON 字段必须包含：summary、domain、targetUsers、painPoints、keyFeatures、constraints、keywords。`,
@@ -233,6 +236,7 @@ async function runToolStage(
       timeoutMs: 60000,
       requireToolCalls: true,
       signal: input.signal,
+      preferredProvider: input.preferredProvider,
     });
 
     addUsage(usage, result.usage);
@@ -470,6 +474,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
     temperature: mode === "tool" ? 0.65 : 0.7,
     timeoutMs: 150000,
     signal: input.signal,
+    preferredProvider: input.preferredProvider,
     onToken: (delta) => emit({ type: "token", delta }),
     onProvider: (provider, failures) => {
       providerInfo = { id: provider.id, label: provider.label, model: provider.model };
@@ -531,6 +536,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
         temperature: 0.2,
         timeoutMs: 60000,
         signal: input.signal,
+        preferredProvider: input.preferredProvider,
         prompt: `${buildQualityPrompt(fullContent, analysis)}
 
 只输出一个 JSON 对象，不要输出解释或 Markdown 代码围栏。JSON 字段必须包含：dimensions（数组，元素含 name、score、comment）、suggestions（字符串数组）、mermaid（字符串）。`,

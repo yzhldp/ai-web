@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAccessPlan, isPlanOwner } from "@/lib/plan-access";
+import { canAccessPlan, canDeleteComment, isPlanOwner } from "@/lib/plan-access";
 import { planCreateSchema, planUpdateSchema } from "@/lib/validation";
 
 const OWNER_ID = "user-owner";
@@ -40,6 +40,22 @@ describe("canAccessPlan - 方案公开/私有访问控制", () => {
     const plan = { userId: OWNER_ID, visibility: "public" };
     expect(isPlanOwner(plan, OWNER_ID)).toBe(true);
     expect(isPlanOwner(plan, OTHER_ID)).toBe(false);
+  });
+});
+
+describe("canDeleteComment - 评论删除权限", () => {
+  const input = { commentUserId: OTHER_ID, planOwnerId: OWNER_ID };
+
+  it("评论作者可以删除自己的评论", () => {
+    expect(canDeleteComment(input, OTHER_ID)).toBe(true);
+  });
+
+  it("方案作者可以管理自己方案下的评论", () => {
+    expect(canDeleteComment(input, OWNER_ID)).toBe(true);
+  });
+
+  it("无关用户不能删除他人评论", () => {
+    expect(canDeleteComment(input, "user-third")).toBe(false);
   });
 });
 

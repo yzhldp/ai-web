@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Send, MessagesSquare, ArrowRight } from "lucide-react";
+import { Send, MessagesSquare, ArrowRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,6 +15,8 @@ interface CommentItem {
   user: { id: string; username: string; nickname: string | null };
   /** 社区讨论流中附带所属方案信息 */
   plan?: { id: string; mode: string };
+  /** 当前用户是否可删除（评论作者或方案作者） */
+  canDelete?: boolean;
 }
 
 /** 格式化时间 */
@@ -37,9 +39,11 @@ function displayName(user: CommentItem["user"]) {
 function CommentRow({
   comment,
   showPlan = false,
+  onDelete,
 }: {
   comment: CommentItem;
   showPlan?: boolean;
+  onDelete?: (comment: CommentItem) => void;
 }) {
   return (
     <div className="flex gap-3">
@@ -66,6 +70,17 @@ function CommentRow({
           <span className="text-xs text-muted-foreground">
             {formatTime(comment.createdAt)}
           </span>
+          {comment.canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(comment)}
+              aria-label="删除评论"
+              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-destructive"
+            >
+              <Trash2 className="h-3 w-3" />
+              删除
+            </button>
+          )}
         </div>
         <p className="mt-1 whitespace-pre-wrap text-sm">{comment.content}</p>
         {showPlan && comment.plan && (
@@ -164,6 +179,25 @@ export function CommentSection({ planId }: { planId: string | null }) {
     }
   }
 
+  /** 删除评论（评论作者或方案作者） */
+  async function handleDelete(comment: CommentItem) {
+    if (!confirm("确定删除这条评论吗？删除后不可恢复")) return;
+    try {
+      const res = await fetch(`/api/comments/${comment.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error || "删除失败");
+        return;
+      }
+      setComments((prev) => prev.filter((item) => item.id !== comment.id));
+      toast.success("评论已删除");
+    } catch {
+      toast.error("网络异常，请重试");
+    }
+  }
+
   return (
     <section className="mt-8 rounded-2xl border bg-white/70 p-6 backdrop-blur">
       <div className="mb-4 flex items-center gap-2">
@@ -204,7 +238,11 @@ export function CommentSection({ planId }: { planId: string | null }) {
       ) : (
         <div className="mb-4 space-y-4">
           {comments.map((comment) => (
-            <CommentRow key={comment.id} comment={comment} />
+            <CommentRow
+              key={comment.id}
+              comment={comment}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}

@@ -23,3 +23,14 @@ export function canAccessPlan(
 export function isPlanOwner(plan: PlanAccessInfo, viewerId: string): boolean {
   return plan.userId === viewerId;
 }
+
+/**
+ * 判断当前用户是否可以删除某条评论
+ * 规则：评论作者可删除自己的评论；方案作者可管理自己方案下的评论。
+ */
+export function canDeleteComment(
+  input: { commentUserId: string; planOwnerId: string },
+  viewerId: string
+): boolean {
+  return input.commentUserId === viewerId || input.planOwnerId === viewerId;
+}

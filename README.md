@@ -40,6 +40,14 @@
 
 工具参数由 Zod 约束；模型不支持工具调用时自动切换确定性规则引擎。
 
+### MCP Server（可被外部 Agent 调用）
+
+- 内置 `POST /api/mcp`，实现 MCP HTTP JSON-RPC 2.0 的 `initialize` / `tools/list` / `tools/call` / `ping`；
+- 对外暴露知识检索、技术选型、排期估算、风险清单 4 个工具，附 JSON Schema，可直接被 MCP 客户端发现与调用；
+- `GET /api/mcp` 提供服务发现信息；`MCP_API_KEY` 支持 Bearer / `x-mcp-key` 鉴权，未配置时回退登录会话；
+- 与站内 Function Calling 复用同一套工具实现，避免两套逻辑漂移；
+- 详见 [docs/12-MCP接入说明.md](docs/12-MCP接入说明.md)。
+
 ### 多供应商路由与自动故障转移
 
 - 支持 DeepSeek / 通义千问 / Moonshot / OpenAI / Ollama 任意 OpenAI 兼容服务；
@@ -255,6 +263,9 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | GET/POST | `/api/plans` | 方案列表 / 保存（含 `visibility` 公开状态） |
 | GET/PATCH/DELETE | `/api/plans/[id]` | 方案详情 / 迭代与公开切换 / 删除（公开方案他人可读） |
 | GET/POST | `/api/comments` | 评论列表 / 发布（公开方案开放，私有方案仅作者） |
+| DELETE | `/api/comments/[id]` | 删除评论（评论作者或方案作者） |
+| GET | `/api/comments/community` | 公开项目社区最新讨论 |
+| GET/POST | `/api/mcp` | MCP 服务发现 / JSON-RPC 2.0 工具调用 |
 
 SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `src/lib/agent/types.ts`。
 
@@ -274,6 +285,7 @@ SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `
 │   │   │   ├── agent/audit      # 调用审计
 │   │   │   ├── knowledge/       # 知识库检索
 │   │   │   ├── health/          # 健康检查
+│   │   │   ├── mcp/             # MCP Server（JSON-RPC 2.0）
 │   │   │   ├── chat/ plans/ comments/ auth/
 │   │   ├── login/ home/ tool/ business/ profile/ plans/[id]/ users/[id]/   # 页面
 │   │   ├── error.tsx / loading.tsx
@@ -285,10 +297,13 @@ SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `
 │   │   ├── plan-diagram.tsx     # Mermaid 架构图
 │   │   ├── knowledge-panel.tsx  # 知识库检索
 │   │   ├── audit-panel.tsx      # AI 审计
+│   │   ├── comment-section.tsx  # 评论区 / 社区讨论
 │   │   └── ui/                  # shadcn/ui 基础组件
 │   ├── lib/
 │   │   ├── agent/               # 编排器 / 提示词 / 工具 / 类型
+│   │   ├── mcp/                 # MCP JSON-RPC 服务与工具
 │   │   ├── rag/                 # 语料 / 切块 / 混合检索
+│   │   ├── plan-access.ts       # 方案与评论权限规则
 │   │   ├── safety.ts            # 安全与内容审核
 │   │   ├── audit.ts             # 审计写入
 │   │   ├── validation.ts        # Zod 校验
@@ -342,6 +357,8 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 - [08 总结与展望](docs/08-总结与展望.md)
 - [09 免费部署上线一个月方案](docs/09-免费部署上线一个月方案.md)
 - [10 评审标准对标说明](docs/10-评审对标说明.md)
+- [11 评审体验指南](docs/11-评审体验指南.md)
+- [12 MCP 接入说明](docs/12-MCP接入说明.md)
 
 ---
 
@@ -360,4 +377,4 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 
 ## 📄 开源协议
 
-本项目为传智杯 AI Web 参赛作品，仅供学习交流使用。
+本项目采用「仅供学习交流」许可，详见 [LICENSE](LICENSE)。

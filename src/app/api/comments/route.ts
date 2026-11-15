@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { inspectInput } from "@/lib/safety";
-import { canAccessPlan } from "@/lib/plan-access";
+import { canAccessPlan, canDeleteComment } from "@/lib/plan-access";
 
 const commentSchema = z.object({
   planId: z.string().min(1, "缺少 planId").max(64),
@@ -24,7 +24,7 @@ async function assertPlanAccess(planId: string, userId: string) {
   if (!canAccessPlan(plan, userId)) {
     return { ok: false as const, status: 403, error: "无权限访问该方案的评论" };
   }
-  return { ok: true as const };
+  return { ok: true as const, planOwnerId: plan.userId };
 }
 
 /**
@@ -56,7 +56,16 @@ export async function GET(request: Request) {
     },
   });
 
-  return NextResponse.json({ comments });
+  // 标记当前用户可管理的评论，避免前端猜测权限
+  const withPermission = comments.map((comment) => ({
+    ...comment,
+    canDelete: canDeleteComment(
+      { commentUserId: comment.userId, planOwnerId: permission.planOwnerId },
+      user.id
+    ),
+  }));
+
+  return NextResponse.json({ comments: withPermission });
 }
 
 /**
@@ -109,5 +118,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ comment });
+  return NextResponse.json({ comment: { ...comment, canDelete: true } });
 }

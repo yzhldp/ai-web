@@ -7,6 +7,7 @@ import { PlanDiagram } from "@/components/plan-diagram";
 import { QualityReportView } from "@/components/quality-report";
 import { SourceList } from "@/components/source-list";
 import { ExportButtons } from "@/components/export-buttons";
+import { DeleteCommentButton } from "@/components/delete-comment-button";
 import type { QualityReport, SourceRef } from "@/lib/agent/types";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -179,7 +180,7 @@ export default async function PlanDetailPage({
                         .toUpperCase()}
                     </div>
                   </Link>
-                  <div>
+                  <div className="flex-1">
                     <div className="flex items-baseline gap-2">
                       <Link
                         href={`/users/${comment.user.id}`}
@@ -190,6 +191,11 @@ export default async function PlanDetailPage({
                       <span className="text-xs text-muted-foreground">
                         {new Date(comment.createdAt).toLocaleString("zh-CN")}
                       </span>
+                      {(comment.user.id === viewer.id || isOwner) && (
+                        <span className="ml-auto">
+                          <DeleteCommentButton commentId={comment.id} />
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-sm">{comment.content}</p>
                   </div>

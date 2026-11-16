@@ -101,7 +101,7 @@
 | 校验 | Zod |
 | 部署 | Docker + Docker Compose |
 
-AI 技术细节见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md)，评审逐项对标见 [docs/09-评审对标说明.md](docs/09-评审对标说明.md)。
+AI 技术细节见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md)。
 
 ### 依赖清单
 
@@ -333,7 +333,7 @@ SSE 事件协议见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md) 与 `
 │   │   ├── validation.ts        # Zod 校验
 │   │   ├── ai.ts / auth.ts / db.ts / rate-limit.ts
 │   └── middleware.ts
-├── docs/                        # 技术文档与评审对标
+├── docs/                        # 技术文档
 ├── Dockerfile
 ├── docker-compose.yml
 └── .env.example / .env.docker.example
@@ -379,7 +379,6 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 - [06 测试与部署](docs/06-测试与部署.md)
 - [07 创新点说明](docs/07-创新点说明.md)
 - [08 总结与展望](docs/08-总结与展望.md)
-- [09 评审标准对标说明](docs/09-评审对标说明.md)
 - [10 评审体验指南](docs/10-评审体验指南.md)
 - [11 MCP 接入说明](docs/11-MCP接入说明.md)
 

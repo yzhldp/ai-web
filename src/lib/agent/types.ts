@@ -9,7 +9,7 @@ export const analysisSchema = z.object({
   painPoints: z.array(z.string()).max(8).describe("提炼后的核心痛点"),
   keyFeatures: z.array(z.string()).max(10).describe("建议的核心功能"),
   constraints: z.array(z.string()).max(8).describe("已知的约束条件，如预算、团队、时间"),
-  keywords: z.array(z.string()).max(12).describe("用于知识库检索的关键词"),
+  keywords: z.array(z.string()).max(24).describe("用于知识库检索的关键词"),
 });
 
 export type PlanAnalysis = z.infer<typeof analysisSchema>;
@@ -27,7 +27,7 @@ export const qualitySchema = z.object({
     .min(4)
     .max(6)
     .describe("需求覆盖度、技术可行性、落地可执行性、创新性、风险完整性"),
-  suggestions: z.array(z.string()).max(6).describe("可执行的改进建议"),
+  suggestions: z.array(z.string()).max(8).describe("可执行的改进建议"),
   mermaid: z
     .string()
     .describe(

@@ -539,7 +539,7 @@ export async function runAgent(input: RunAgentInput): Promise<AgentResult> {
         preferredProvider: input.preferredProvider,
         prompt: `${buildQualityPrompt(fullContent, analysis)}
 
-只输出一个 JSON 对象，不要输出解释或 Markdown 代码围栏。JSON 字段必须包含：dimensions（数组，元素含 name、score、comment）、suggestions（字符串数组）、mermaid（字符串）。`,
+只输出一个 JSON 对象，不要输出解释或 Markdown 代码围栏。JSON 字段必须包含：dimensions（正好 5 个，元素含 name、score、comment）、suggestions（字符串数组，最多 6 条）、mermaid（字符串）。`,
       });
       addUsage(usage, result.usage);
       countFailures(result.attempts);

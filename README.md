@@ -46,7 +46,7 @@
 - 对外暴露知识检索、技术选型、排期估算、风险清单 4 个工具，附 JSON Schema，可直接被 MCP 客户端发现与调用；
 - `GET /api/mcp` 提供服务发现信息；`MCP_API_KEY` 支持 Bearer / `x-mcp-key` 鉴权，未配置时回退登录会话；
 - 与站内 Function Calling 复用同一套工具实现，避免两套逻辑漂移；
-- 详见 [docs/12-MCP接入说明.md](docs/12-MCP接入说明.md)。
+- 详见 [docs/11-MCP接入说明.md](docs/11-MCP接入说明.md)。
 
 ### 多供应商路由与自动故障转移
 
@@ -101,7 +101,7 @@
 | 校验 | Zod |
 | 部署 | Docker + Docker Compose |
 
-AI 技术细节见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md)，评审逐项对标见 [docs/10-评审对标说明.md](docs/10-评审对标说明.md)。
+AI 技术细节见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md)，评审逐项对标见 [docs/09-评审对标说明.md](docs/09-评审对标说明.md)。
 
 ### 依赖清单
 
@@ -127,8 +127,8 @@ AI 技术细节见 [docs/04-AI技术方案.md](docs/04-AI技术方案.md)，评�
 
 ### 环境要求
 
-- Node.js >= 18.17
-- pnpm >= 9
+- Node.js >= 18.17（推荐 20，见 `.nvmrc`）
+- pnpm >= 9（推荐 10.5.2，见 `packageManager`）
 
 ```bash
 # 1. 安装依赖（自动执行 prisma generate）
@@ -247,17 +247,24 @@ docker compose down -v            # 停止并删除数据（谨慎）
 | `BAICHUAN_API_KEY` | 否* | 百川智能密钥 | platform.baichuan-ai.com |
 | `SENSENOVA_API_KEY` | 否* | 商汤日日新密钥 | platform.sensenova.cn |
 | `SILICONFLOW_API_KEY` | 否* | 硅基流动密钥（聚合多种模型） | cloud.siliconflow.cn |
-| `CUSTOM_API_KEY` / `CUSTOM_BASE_URL` | 否* | 自定义 OpenAI 兼容平台 | 需同时填写地址与模型 |
+| `CUSTOM_API_KEY` / `CUSTOM_BASE_URL` / `CUSTOM_MODEL` | 否* | 自定义 OpenAI 兼容平台 | 需同时填写地址与模型 |
 | `OLLAMA_BASE_URL` | 否* | 本地 Ollama 地址，填写即启用 | `http://host.docker.internal:11434/v1` |
 | `AI_PROVIDER_ORDER` | 否 | 供应商优先级与白名单，逗号分隔 | `deepseek,qwen,zhipu,moonshot` |
 | `AI_DISABLE_FALLBACK` | 否 | 关闭自动切换，仅用第一个供应商 | `true` / `false` |
+| `AI_FIRST_TOKEN_TIMEOUT_MS` | 否 | 流式生成首 Token 超时时间（毫秒） | `20000` |
 | `TAVILY_API_KEY` | 否 | 联网搜索工具密钥（启用 `web_search`） | 在 tavily.com 申请 |
 | `JWT_SECRET` | 是 | JWT 签名密钥（生产务必修改） | `openssl rand -base64 48` |
+| `MCP_API_KEY` | 否 | 外部 MCP 客户端调用 `/api/mcp` 的密钥 | 留空时使用站内登录会话 |
+| `SEED_DEMO_DATA` | 否 | 启动时初始化演示用户、项目与评论 | `true` / `false` |
+| `PORT` | 否 | 服务端口 | `3000` |
+| `DATA_DIR` | 否 | Docker 数据目录（仅容器入口使用） | `/app/data` |
 | `VISION_MODEL` | 否 | 视觉模型名称，用于参考图理解 | `qwen-vl-max` / `glm-4v-flash` |
 | `VISION_BASE_URL` | 否 | 视觉模型兼容地址 | — |
 | `VISION_API_KEY` | 否 | 视觉模型密钥（默认复用供应商密钥） | — |
 
-> \* 至少配置一个文本模型供应商。未配置视觉模型时，图片输入自动降级，文本生成与架构图不受影响。
+> \* 至少配置一个文本模型供应商。所有供应商均支持 `<前缀>_BASE_URL` 与 `<前缀>_MODEL` 覆盖默认值（如 `ZHIPU_BASE_URL`、`ZHIPU_MODEL`）。未配置视觉模型时，图片输入自动降级，文本生成与架构图不受影响。
+>
+> 依赖清单：`package.json` + `pnpm-lock.yaml`；Node.js 版本见 `.nvmrc`（20）与 `package.json` 的 `engines` 字段。
 
 ---
 
@@ -372,9 +379,9 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 - [06 测试与部署](docs/06-测试与部署.md)
 - [07 创新点说明](docs/07-创新点说明.md)
 - [08 总结与展望](docs/08-总结与展望.md)
-- [10 评审标准对标说明](docs/10-评审对标说明.md)
-- [11 评审体验指南](docs/11-评审体验指南.md)
-- [12 MCP 接入说明](docs/12-MCP接入说明.md)
+- [09 评审标准对标说明](docs/09-评审对标说明.md)
+- [10 评审体验指南](docs/10-评审体验指南.md)
+- [11 MCP 接入说明](docs/11-MCP接入说明.md)
 
 ---
 
@@ -382,10 +389,9 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 
 | 角色 | 姓名 |
 | --- | --- |
-| 队长 / 全栈开发 | yzhldp |
-| 前端开发 | 待补充 |
-| 后端开发 | 待补充 |
-| 产品 / 设计 | 待补充 |
+| 队长 / 全栈开发 / 产品设计 | yzhldp |
+
+> 本项目为单人参赛，独立完成需求分析、架构设计、前后端开发、测试与部署。
 
 > 仓库地址：<https://github.com/yzhldp/ai-web>（Public，可直接评审访问）。
 

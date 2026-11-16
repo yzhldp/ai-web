@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "创意雏形合成助手 - 传智杯 AI Web 参赛项目",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "packageManager": "pnpm@10.5.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

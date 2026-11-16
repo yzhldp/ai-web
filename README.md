@@ -46,7 +46,7 @@
 - 对外暴露知识检索、技术选型、排期估算、风险清单 4 个工具，附 JSON Schema，可直接被 MCP 客户端发现与调用；
 - `GET /api/mcp` 提供服务发现信息；`MCP_API_KEY` 支持 Bearer / `x-mcp-key` 鉴权，未配置时回退登录会话；
 - 与站内 Function Calling 复用同一套工具实现，避免两套逻辑漂移；
-- 详见 [docs/11-MCP接入说明.md](docs/11-MCP接入说明.md)。
+- 详见 [docs/10-MCP接入说明.md](docs/10-MCP接入说明.md)。
 
 ### 多供应商路由与自动故障转移
 
@@ -379,8 +379,8 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 - [06 测试与部署](docs/06-测试与部署.md)
 - [07 创新点说明](docs/07-创新点说明.md)
 - [08 总结与展望](docs/08-总结与展望.md)
-- [10 评审体验指南](docs/10-评审体验指南.md)
-- [11 MCP 接入说明](docs/11-MCP接入说明.md)
+- [09 评审体验指南](docs/09-评审体验指南.md)
+- [10 MCP 接入说明](docs/10-MCP接入说明.md)
 
 ---
 

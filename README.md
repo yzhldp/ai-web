@@ -389,9 +389,10 @@ curl -b cookie.txt -H 'Content-Type: application/json' \
 
 | 角色 | 姓名 |
 | --- | --- |
-| 队长 / 全栈开发 / 产品设计 | yzhldp |
-
-> 本项目为单人参赛，独立完成需求分析、架构设计、前后端开发、测试与部署。
+| 队长 / 全栈开发 |  |
+| 前端开发 |  |
+| 后端开发 |  |
+| 产品 / 设计 |  |
 
 > 仓库地址：<https://github.com/yzhldp/ai-web>（Public，可直接评审访问）。
 

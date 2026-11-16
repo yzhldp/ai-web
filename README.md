@@ -168,9 +168,9 @@ pnpm start
 7. 打开「个人主页 → AI 审计」，查看模型路由、Token 消耗、自动切换次数与模型评测；
 8. 在「个人主页」将项目设为公开，返回首页查看「社区精选」，进入项目评论区并点击头像查看他人公开主页。
 
-> 演示账号（Docker 启动时自动初始化，可用 `SEED_DEMO_DATA=false` 关闭）：`linxiaoman` / `chenyiming` / `suqing` / `zhouye`，密码统一为 `demo1234`。
+> 演示账号（Docker / 一键脚本默认初始化，可用 `SEED_DEMO_DATA=false` 关闭；离线包已预置）：`linxiaoman` / `chenyiming` / `suqing` / `zhouye`，密码统一为 `demo1234`。
 >
-> 永久测试账号：`test` / `test1234`。该账号与演示数据开关无关，Docker 每次启动都会确保存在。
+> 永久测试账号：`test` / `test1234`。三种运行方式在初始化时都会确保该账号存在，与演示数据开关无关。
 
 ### 开发与测试
 

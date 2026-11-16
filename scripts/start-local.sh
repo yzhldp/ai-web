@@ -26,7 +26,7 @@ if grep -q '^JWT_SECRET="please-change-me' .env 2>/dev/null || ! grep -q '^JWT_S
   sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=\"$SECRET\"|" .env && rm -f .env.bak
   echo "      已生成随机 JWT_SECRET"
 fi
-if ! grep -q '^DEEPSEEK_API_KEY="[^"]' .env; then
+if ! grep -Eq '^(DEEPSEEK_API_KEY|DASHSCOPE_API_KEY|ZHIPU_API_KEY|MOONSHOT_API_KEY|DOUBAO_API_KEY|QIANFAN_API_KEY|HUNYUAN_API_KEY|SPARK_API_KEY|MINIMAX_API_KEY|STEPFUN_API_KEY|YI_API_KEY|BAICHUAN_API_KEY|SENSENOVA_API_KEY|SILICONFLOW_API_KEY|CUSTOM_API_KEY|OLLAMA_BASE_URL)="[^"]' .env; then
   echo "      [提示] 未填写模型密钥，AI 生成不可用；悬浮助手离线问答仍可使用"
 fi
 
@@ -36,8 +36,14 @@ echo "[2/4] 安装依赖（首次约 2-4 分钟）..."
 npx --yes pnpm@10.5.2 install --frozen-lockfile --ignore-scripts --node-linker=hoisted
 npx --yes pnpm@10.5.2 exec prisma generate
 
-echo "[3/4] 初始化数据库与构建..."
+echo "[3/4] 初始化数据库、测试账号与构建..."
 npx --yes pnpm@10.5.2 exec prisma db push
+SEED_FLAG=$(grep -E '^SEED_DEMO_DATA=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '" ' || true)
+if [ "$SEED_FLAG" != "false" ]; then
+  node prisma/seed.mjs
+else
+  node prisma/ensure-test-account.mjs
+fi
 npx --yes pnpm@10.5.2 build
 
 echo "[4/4] 启动服务： http://localhost:3000  （Ctrl+C 停止）"

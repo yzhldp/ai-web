@@ -35,7 +35,17 @@ if ((Get-EnvValue "JWT_SECRET") -eq "please-change-me-to-a-random-secret" -or -n
   (Get-Content .env) -replace '^JWT_SECRET=.*', "JWT_SECRET=`"$secret`"" | Set-Content .env -Encoding UTF8
   Write-Host "      已生成随机 JWT_SECRET" -ForegroundColor Green
 }
-if (-not (Get-EnvValue "DEEPSEEK_API_KEY")) {
+$providerKeys = @(
+  "DEEPSEEK_API_KEY", "DASHSCOPE_API_KEY", "ZHIPU_API_KEY", "MOONSHOT_API_KEY",
+  "DOUBAO_API_KEY", "QIANFAN_API_KEY", "HUNYUAN_API_KEY", "SPARK_API_KEY",
+  "MINIMAX_API_KEY", "STEPFUN_API_KEY", "YI_API_KEY", "BAICHUAN_API_KEY",
+  "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY", "CUSTOM_API_KEY", "OLLAMA_BASE_URL"
+)
+$hasModelConfig = $false
+foreach ($key in $providerKeys) {
+  if (Get-EnvValue $key) { $hasModelConfig = $true; break }
+}
+if (-not $hasModelConfig) {
   Write-Host "      [提示] 未填写模型密钥，AI 生成不可用；悬浮助手离线问答仍可使用" -ForegroundColor Yellow
 }
 
@@ -50,8 +60,14 @@ if ($LASTEXITCODE -ne 0) { throw "依赖安装失败，请检查网络后重试"
 & npx --yes pnpm@10.5.2 exec prisma generate
 if ($LASTEXITCODE -ne 0) { throw "Prisma Client 生成失败" }
 
-Write-Host "[3/4] 初始化数据库与构建..." -ForegroundColor Cyan
+Write-Host "[3/4] 初始化数据库、测试账号与构建..." -ForegroundColor Cyan
 & npx --yes pnpm@10.5.2 exec prisma db push
+if ((Get-EnvValue "SEED_DEMO_DATA") -ne "false") {
+  & node prisma/seed.mjs
+} else {
+  & node prisma/ensure-test-account.mjs
+}
+if ($LASTEXITCODE -ne 0) { throw "测试账号初始化失败" }
 & npx --yes pnpm@10.5.2 build
 if ($LASTEXITCODE -ne 0) { throw "构建失败" }
 

@@ -85,6 +85,10 @@ New-Item -ItemType Directory -Force -Path (Join-Path $stage "data") | Out-Null
 $dbPath = (Join-Path $stage "data\dev.db").Replace("\", "/")
 $env:DATABASE_URL = "file:$dbPath"
 & pnpm exec prisma db push --skip-generate
+if ($LASTEXITCODE -ne 0) { throw "数据库初始化失败" }
+# 预置永久测试账号与演示数据，评委解压后可直接登录体验
+& $nodeExe prisma/seed.mjs
+if ($LASTEXITCODE -ne 0) { throw "测试账号与演示数据初始化失败" }
 Pop-Location
 
 # 5. 精简为生产依赖、清理中间产物并组装便携 Node
@@ -144,11 +148,14 @@ $readme = @'
 1. 解压本压缩包到任意目录（路径不要含中文和空格，例如 D:\ai-web）
 2. 双击「启动.bat」
 3. 浏览器自动打开 http://localhost:3000
-4. 首次使用请先注册账号（密码 8-20 位，不能是纯数字）
+4. 可直接用永久测试账号登录：test / test1234
+   也可使用演示账号：linxiaoman / chenyiming / suqing / zhouye，密码 demo1234
+   需要自己的账号时，可在登录页注册（密码 8-20 位，不能是纯数字）
 
 说明：
 - 内置 Node.js 与全部依赖，无需安装 Docker / Node.js，无需联网即可打开页面；
-- AI 在线生成需要联网并配置模型密钥：编辑 .env 填写 DEEPSEEK_API_KEY 后重启；
+- 已预置测试账号、演示项目与评论数据，解压后即可体验完整流程；
+- AI 在线生成需要联网并配置模型密钥：编辑 .env 填写任一平台密钥（如 ZHIPU_API_KEY / DEEPSEEK_API_KEY）后重启；
 - 未配置密钥时，悬浮助手的离线问答、知识库与页面功能仍可使用；
 - 数据保存在 data\dev.db，删除该文件即可重置全部账号与方案。
 '@
